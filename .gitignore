@@ -7,3 +7,5 @@ dist/
 GigaFun_Launcher.exe
 vendor/**/__pycache__/
 vendor/**/*.pyc
+WowOpenBox-4.8.3/.github/
+WowOpenBox-4.8.3/.gitignore

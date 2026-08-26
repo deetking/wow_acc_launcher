@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -24,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.4.2"
+APP_VERSION = "1.5.0"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -90,6 +91,7 @@ def default_config() -> dict:
     return {
         "wow_path": "",
         "official_launcher_path": "",
+        "wowopenbox_path": "",
         "window_timeout": 30,
         "ready_delay": 3.0,
         "close_after_login": True,
@@ -283,9 +285,11 @@ class Launcher(ctk.CTk):
         for text, command in (
             ("ÚČTY", lambda: self.accounts_canvas.yview_moveto(0)),
             ("OFICIÁLNY UPDATER", self.launch_official_updater),
+            ("WOWOPENBOX", self.launch_wowopenbox),
             ("NASTAVENIA", self.open_settings),
         ):
-            ctk.CTkButton(nav, text=text, command=command, width=105 if text != "OFICIÁLNY UPDATER" else 155,
+            nav_width = 155 if text == "OFICIÁLNY UPDATER" else 122 if text == "WOWOPENBOX" else 105
+            ctk.CTkButton(nav, text=text, command=command, width=nav_width,
                           height=40, corner_radius=7, fg_color="transparent", hover_color="#172019",
                           text_color="#c5c0b5", font=("Segoe UI", 9, "bold")).pack(side="left", padx=3, pady=17)
         ctk.CTkLabel(topbar, text=APP_NAME, fg_color="transparent", text_color="#aaa397",
@@ -420,6 +424,13 @@ class Launcher(ctk.CTk):
             if nearby.is_file() and not configured_launcher.is_file():
                 self.config_data["official_launcher_path"] = str(nearby.resolve())
                 changed = True
+        if not Path(self.config_data.get("wowopenbox_path", "")).is_dir():
+            bundled_wob = resource_path("WowOpenBox-4.8.3")
+            local_wob = Path(__file__).resolve().parent / "WowOpenBox-4.8.3"
+            wob_folder = next((path for path in (bundled_wob, local_wob) if path.is_dir()), None)
+            if wob_folder:
+                self.config_data["wowopenbox_path"] = str(wob_folder.resolve())
+                changed = True
         if changed:
             self.persist()
         return self.valid_wow_path()
@@ -462,6 +473,52 @@ class Launcher(ctk.CTk):
                 self.status.configure(text="●  OFICIÁLNY UPDATER SPUSTENÝ", text_color=GOLD)
             except OSError as exc:
                 messagebox.showerror(APP_NAME, f"Updater sa nepodarilo spustiť:\n{exc}", parent=self)
+
+    def choose_wowopenbox_path(self) -> None:
+        selected = filedialog.askdirectory(title="Vyber priečinok WowOpenBox")
+        if selected:
+            self.config_data["wowopenbox_path"] = selected
+            self.persist()
+
+    def launch_wowopenbox(self) -> None:
+        self.auto_discover_paths()
+        configured = Path(self.config_data.get("wowopenbox_path", ""))
+        if not configured.is_dir():
+            messagebox.showinfo(APP_NAME, "Vyber priečinok WowOpenBox-4.8.3.", parent=self)
+            self.choose_wowopenbox_path()
+            configured = Path(self.config_data.get("wowopenbox_path", ""))
+        if not configured.is_dir():
+            return
+
+        executable = next(
+            (
+                match
+                for pattern in ("OpenMultiBoxing*.exe", "WOB*.exe", "WowOpenBox*.exe")
+                for match in configured.glob(pattern)
+                if match.is_file()
+            ),
+            None,
+        )
+        try:
+            if executable:
+                subprocess.Popen([str(executable)], cwd=str(executable.parent))
+            else:
+                script = configured / "WowOpenBox.tcl"
+                wish = shutil.which("wish.exe") or shutil.which("wish")
+                if not script.is_file() or not wish:
+                    messagebox.showerror(
+                        APP_NAME,
+                        "WowOpenBox priečinok je pridaný, ale nevidím v ňom spustiteľné WOB EXE.\n\n"
+                        "Tento balík obsahuje hlavne Tcl zdroják. Pre priame spustenie potrebuješ buď:\n"
+                        "- oficiálny WowOpenBox/OpenMultiBoxing .exe v rovnakom priečinku,\n"
+                        "- alebo nainštalovaný Tcl/Tk runtime s wish.exe a potrebnými balíkmi.",
+                        parent=self,
+                    )
+                    return
+                subprocess.Popen([wish, str(script)], cwd=str(configured))
+            self.status.configure(text="●  WOWOPENBOX SPUSTENÝ", text_color=GOLD)
+        except OSError as exc:
+            messagebox.showerror(APP_NAME, f"WowOpenBox sa nepodarilo spustiť:\n{exc}", parent=self)
 
     def ensure_realmlist(self) -> bool:
         wow_dir = Path(self.config_data["wow_path"]).parent
@@ -551,7 +608,7 @@ class Launcher(ctk.CTk):
         window = ctk.CTkToplevel(self)
         window.title(f"Nastavenia • {APP_NAME}")
         window.configure(fg_color=PANEL)
-        window.geometry("660x500")
+        window.geometry("660x580")
         window.resizable(False, False)
         window.transient(self)
         window.grid_columnconfigure(0, weight=1)
@@ -579,8 +636,17 @@ class Launcher(ctk.CTk):
                       fg_color="#315f36", hover_color="#477f4c",
                       command=lambda: (self.choose_official_launcher(), official_text.set(self.config_data.get("official_launcher_path", "")))).grid(row=5, column=1, padx=(0, 24))
 
+        ctk.CTkLabel(window, text="WOWOPENBOX PRIEČINOK", text_color="#75c77a",
+                     font=("Segoe UI", 9, "bold")).grid(row=6, column=0, padx=24, pady=(18, 6), sticky="w")
+        wob_text = tk.StringVar(value=self.config_data.get("wowopenbox_path", "Nenastavený"))
+        ctk.CTkEntry(window, textvariable=wob_text, height=38, corner_radius=8, state="readonly",
+                     fg_color=PANEL_ALT, border_color="#355137").grid(row=7, column=0, padx=(24, 10), sticky="ew")
+        ctk.CTkButton(window, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+                      fg_color="#315f36", hover_color="#477f4c",
+                      command=lambda: (self.choose_wowopenbox_path(), wob_text.set(self.config_data.get("wowopenbox_path", "")))).grid(row=7, column=1, padx=(0, 24))
+
         timing = ctk.CTkFrame(window, fg_color="#151816", corner_radius=10)
-        timing.grid(row=6, column=0, columnspan=2, padx=24, pady=20, sticky="ew")
+        timing.grid(row=8, column=0, columnspan=2, padx=24, pady=20, sticky="ew")
         timing.grid_columnconfigure((0, 1), weight=1)
         timeout = tk.StringVar(value=str(int(self.config_data.get("window_timeout", 30))))
         delay = tk.StringVar(value=str(float(self.config_data.get("ready_delay", 3))))
@@ -594,7 +660,7 @@ class Launcher(ctk.CTk):
                      fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=1, padx=16, pady=(0, 14), sticky="ew")
         close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", True)))
         ctk.CTkSwitch(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after,
-                      progress_color="#4b9a53", button_color="#e0b326").grid(row=7, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
+                      progress_color="#4b9a53", button_color="#e0b326").grid(row=9, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
 
         def save() -> None:
             try:
@@ -609,7 +675,7 @@ class Launcher(ctk.CTk):
 
         ctk.CTkButton(window, text="ULOŽIŤ NASTAVENIA", command=save, width=190, height=42,
                       corner_radius=10, fg_color="#d6a91d", hover_color="#f0c532",
-                      text_color="#090b09", font=("Segoe UI", 10, "bold")).grid(row=8, column=0, columnspan=2, padx=24, pady=(0, 22), sticky="e")
+                      text_color="#090b09", font=("Segoe UI", 10, "bold")).grid(row=10, column=0, columnspan=2, padx=24, pady=(0, 22), sticky="e")
 
     def persist(self) -> None:
         try:
