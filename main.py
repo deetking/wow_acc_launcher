@@ -25,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.3"
+APP_VERSION = "1.5.4"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -176,6 +176,18 @@ def paste_text(pyautogui, value: str) -> None:
         pyperclip.copy(previous)
     except Exception:
         pyautogui.write(value, interval=0.03)
+
+
+def find_wowopenbox_executable(folder: Path) -> Path | None:
+    if not folder.is_dir():
+        return None
+    preferred_names = ("wob2025", "openmultiboxing", "wowopenbox", "wob")
+    matches = [path for path in folder.rglob("*.exe") if path.is_file()]
+    for keyword in preferred_names:
+        found = next((path for path in matches if keyword in path.name.lower()), None)
+        if found:
+            return found
+    return matches[0] if matches else None
 
 
 class RoundedButton(ctk.CTkButton):
@@ -451,7 +463,7 @@ class Launcher(ctk.CTk):
             if nearby.is_file() and not configured_launcher.is_file():
                 self.config_data["official_launcher_path"] = str(nearby.resolve())
                 changed = True
-        if not Path(self.config_data.get("wowopenbox_path", "")).is_dir():
+        if not find_wowopenbox_executable(Path(self.config_data.get("wowopenbox_path", ""))):
             app_base = Path(__file__).resolve().parent
             wob_folder = next(
                 (
@@ -462,7 +474,7 @@ class Launcher(ctk.CTk):
                         resource_path("WowOpenBox-4.8.3"),
                         app_base / "WowOpenBox-4.8.3",
                     )
-                    if path.is_dir()
+                    if find_wowopenbox_executable(path)
                 ),
                 None,
             )
@@ -528,15 +540,7 @@ class Launcher(ctk.CTk):
         if not configured.is_dir():
             return
 
-        executable = next(
-            (
-                match
-                for pattern in ("OpenMultiBoxing*.exe", "WOB*.exe", "WowOpenBox*.exe")
-                for match in configured.glob(pattern)
-                if match.is_file()
-            ),
-            None,
-        )
+        executable = find_wowopenbox_executable(configured)
         try:
             if executable:
                 subprocess.Popen([str(executable)], cwd=str(executable.parent))
