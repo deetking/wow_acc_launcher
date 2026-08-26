@@ -17,7 +17,7 @@ import uuid
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -218,8 +218,8 @@ class Launcher(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_NAME)
-        self.geometry("900x650")
-        self.minsize(720, 520)
+        self.geometry("1100x680")
+        self.minsize(900, 600)
         self.configure(bg=BG)
         self.config_data = load_config()
         self.busy = False
@@ -228,32 +228,54 @@ class Launcher(tk.Tk):
         self.canvas = tk.Canvas(self, bg=BG, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
         try:
-            self.background_image = tk.PhotoImage(file=str(resource_path("assets/nemesis_background.png")))
+            from PIL import Image, ImageTk
+
+            artwork = Image.open(resource_path("assets/nemesis_background_v2.png"))
+            artwork = artwork.resize((1100, 680), Image.Resampling.LANCZOS)
+            self.background_image = ImageTk.PhotoImage(artwork)
             self.background_id = self.canvas.create_image(0, 0, image=self.background_image, anchor="center")
-        except tk.TclError:
+        except (ImportError, OSError, tk.TclError):
             self.background_image = None
             self.background_id = None
         self.canvas.bind("<Configure>", self._resize_background)
 
-        shell = tk.Frame(self.canvas, bg=PANEL, highlightbackground=GOLD_DARK, highlightthickness=1)
-        self.shell_window = self.canvas.create_window(450, 330, window=shell, width=680, height=540)
+        topbar = tk.Frame(self.canvas, bg="#0c0c0b", highlightbackground="#263b25", highlightthickness=1)
+        self.topbar_window = self.canvas.create_window(0, 0, window=topbar, anchor="nw", width=1100, height=75)
+        nav = tk.Frame(topbar, bg="#0c0c0b")
+        nav.pack(side="left", padx=14, fill="y")
+        for text, command in (
+            ("ÚČTY", lambda: self.accounts_canvas.yview_moveto(0)),
+            ("OFICIÁLNY UPDATER", self.launch_official_updater),
+            ("NASTAVENIA", self.open_settings),
+        ):
+            tk.Button(nav, text=text, command=command, bg="#0c0c0b", fg="#9e998d",
+                      activebackground="#151914", activeforeground="#6fd276", relief="flat",
+                      bd=0, cursor="hand2", font=("Segoe UI", 8, "bold"), padx=12).pack(side="left", fill="y")
+        tk.Label(topbar, text=APP_NAME, bg="#0c0c0b", fg="#aaa397",
+                 font=("Segoe UI", 9, "bold")).place(relx=.5, rely=.3, anchor="center")
+        tk.Label(topbar, text="GIGAFUN • ACCOUNT MANAGER", bg="#0c0c0b", fg="#4d8050",
+                 font=("Segoe UI", 7)).place(relx=.5, rely=.67, anchor="center")
 
-        header = tk.Frame(shell, bg=PANEL, padx=28, pady=20)
-        header.pack(fill="x")
-        brand = tk.Frame(header, bg=PANEL)
-        brand.pack(side="left")
-        tk.Label(brand, text=f"PROJECT  •  NEMESIS    v{APP_VERSION}", bg=PANEL, fg=GOLD, font=("Georgia", 10, "bold")).pack(anchor="w")
-        tk.Label(brand, text="GIGAFUN", bg=PANEL, fg=TEXT, font=("Georgia", 29, "bold")).pack(anchor="w", pady=(2, 0))
-        tk.Label(brand, text="WoW TBC 2.4.3  ·  ACCOUNT LAUNCHER", bg=PANEL, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w")
-        self._dark_button(header, "⚙  NASTAVENIA", self.open_settings, width=16).pack(side="right", pady=12)
+        self.notice_id = self.canvas.create_text(18, 98, text=f"Launcher • Version {APP_VERSION}",
+                                                  fill="#d3cec2", anchor="w",
+                                                  font=("Segoe UI", 9, "bold"))
+        self.notice_line = self.canvas.create_line(14, 86, 14, 112, fill="#63c66b", width=2)
+        self.brand_id = self.canvas.create_text(550, 150, text="GIGAFUN", fill="#d5a51d",
+                                                 font=("Georgia", 30, "bold"))
+        self.brand_subtitle_id = self.canvas.create_text(550, 181, text="NEMESIS ACCOUNT LAUNCHER",
+                                                          fill="#71b975", font=("Segoe UI", 8, "bold"))
 
-        tk.Frame(shell, bg=GOLD_DARK, height=1).pack(fill="x")
-        section = tk.Frame(shell, bg=PANEL, padx=28, pady=16)
+        accounts_panel = tk.Frame(self.canvas, bg="#0c0e0c", highlightbackground="#30452f", highlightthickness=1)
+        self.accounts_panel_window = self.canvas.create_window(550, 205, window=accounts_panel,
+                                                                anchor="n", width=690, height=365)
+        section = tk.Frame(accounts_panel, bg="#0c0e0c", padx=22, pady=12)
         section.pack(fill="x")
-        tk.Label(section, text="VYBER ÚČET", bg=PANEL, fg=GOLD, font=("Segoe UI", 10, "bold")).pack(side="left")
-        tk.Label(section, text="Kliknutím spustíš hru a prihlásenie", bg=PANEL, fg=MUTED, font=("Segoe UI", 9)).pack(side="right")
-
-        accounts_area = tk.Frame(shell, bg=PANEL)
+        tk.Label(section, text="MOJE ÚČTY", bg="#0c0e0c", fg="#74c97a",
+                 font=("Segoe UI", 9, "bold")).pack(side="left")
+        tk.Label(section, text="Vyber účet a spusti hru", bg="#0c0e0c", fg="#6f6c64",
+                 font=("Segoe UI", 8)).pack(side="right")
+        tk.Frame(accounts_panel, bg="#263b25", height=1).pack(fill="x")
+        accounts_area = tk.Frame(accounts_panel, bg="#0c0e0c")
         accounts_area.pack(fill="both", expand=True)
         self.accounts_canvas = tk.Canvas(accounts_area, bg=PANEL, highlightthickness=0, bd=0)
         accounts_scrollbar = tk.Scrollbar(
@@ -275,8 +297,9 @@ class Launcher(tk.Tk):
             lambda event: self.accounts_canvas.itemconfigure(self.accounts_window, width=event.width),
         )
         self.bind_all("<MouseWheel>", self._scroll_accounts, add="+")
-        footer = tk.Frame(shell, bg=PANEL_ALT, padx=28, pady=14)
-        footer.pack(fill="x", side="bottom")
+        footer = tk.Frame(self.canvas, bg="#0a0b09", padx=24, pady=11,
+                          highlightbackground="#394322", highlightthickness=1)
+        self.footer_window = self.canvas.create_window(0, 680, window=footer, anchor="sw", width=1100, height=82)
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left")
         self._dark_button(footer, "OFICIÁLNY UPDATER", self.launch_official_updater, width=19).pack(side="left", padx=8)
         footer_meta = tk.Frame(footer, bg=PANEL_ALT)
@@ -302,7 +325,13 @@ class Launcher(tk.Tk):
     def _resize_background(self, event: tk.Event) -> None:
         if self.background_id:
             self.canvas.coords(self.background_id, event.width / 2, event.height / 2)
-        self.canvas.coords(self.shell_window, event.width / 2, event.height / 2)
+        self.canvas.itemconfigure(self.topbar_window, width=event.width)
+        self.canvas.coords(self.accounts_panel_window, event.width / 2, 205)
+        self.canvas.itemconfigure(self.accounts_panel_window, width=min(690, event.width - 80), height=max(285, event.height - 315))
+        self.canvas.coords(self.footer_window, 0, event.height)
+        self.canvas.itemconfigure(self.footer_window, width=event.width)
+        self.canvas.coords(self.brand_id, event.width / 2, 150)
+        self.canvas.coords(self.brand_subtitle_id, event.width / 2, 181)
 
     def _scroll_accounts(self, event: tk.Event) -> None:
         widget = self.winfo_containing(event.x_root, event.y_root)
