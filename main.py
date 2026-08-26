@@ -12,12 +12,19 @@ import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 import uuid
+
+VENDOR_DIR = Path(__file__).resolve().parent / "vendor"
+if VENDOR_DIR.is_dir():
+    sys.path.insert(0, str(VENDOR_DIR))
+import customtkinter as ctk
+
+ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.4.0"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -142,9 +149,7 @@ def activate_window(hwnd: int) -> None:
     user32.SetForegroundWindow(hwnd)
 
 
-class RoundedButton(tk.Canvas):
-    """Small themed button with real rounded corners and hover feedback."""
-
+class RoundedButton(ctk.CTkButton):
     def __init__(
         self,
         parent: tk.Misc,
@@ -158,68 +163,44 @@ class RoundedButton(tk.Canvas):
         font: tuple,
         radius: int = 9,
     ):
-        parent_bg = parent.cget("bg")
-        super().__init__(parent, width=width, height=height, bg=parent_bg, bd=0,
-                         highlightthickness=0, cursor="hand2", takefocus=1)
-        self.command = command
-        self.normal_color = background
-        self.hover_color = hover
-        self.radius = radius
-        self.shape = self._rounded_rectangle(1, 1, width - 1, height - 1, radius, fill=background)
-        self.caption = self.create_text(width / 2, height / 2, text=text, fill=foreground, font=font)
-        for tag in (self.shape, self.caption):
-            self.tag_bind(tag, "<Button-1>", lambda _event: self.command())
-            self.tag_bind(tag, "<Enter>", self._enter)
-            self.tag_bind(tag, "<Leave>", self._leave)
-        self.bind("<Return>", lambda _event: self.command())
-        self.bind("<space>", lambda _event: self.command())
-        self.bind("<Configure>", self._resize_shape)
-
-    @staticmethod
-    def _shape_points(x1: int, y1: int, x2: int, y2: int, radius: int) -> tuple:
-        return (
-            x1 + radius, y1, x2 - radius, y1, x2, y1, x2, y1 + radius,
-            x2, y2 - radius, x2, y2, x2 - radius, y2, x1 + radius, y2,
-            x1, y2, x1, y2 - radius, x1, y1 + radius, x1, y1,
+        super().__init__(
+            parent,
+            text=text,
+            command=command,
+            width=width,
+            height=height,
+            corner_radius=radius,
+            fg_color=background,
+            hover_color=hover,
+            text_color=foreground,
+            border_width=0,
+            font=font,
         )
 
-    def _rounded_rectangle(self, x1: int, y1: int, x2: int, y2: int, radius: int, **kwargs):
-        return self.create_polygon(self._shape_points(x1, y1, x2, y2, radius),
-                                   smooth=True, splinesteps=20, **kwargs)
 
-    def _resize_shape(self, event: tk.Event) -> None:
-        self.coords(self.shape, *self._shape_points(1, 1, event.width - 1, event.height - 1, self.radius))
-        self.coords(self.caption, event.width / 2, event.height / 2)
-
-    def _enter(self, _event=None) -> None:
-        self.itemconfigure(self.shape, fill=self.hover_color)
-
-    def _leave(self, _event=None) -> None:
-        self.itemconfigure(self.shape, fill=self.normal_color)
-
-
-class AccountDialog(tk.Toplevel):
+class AccountDialog(ctk.CTkToplevel):
     def __init__(self, parent: tk.Misc, account: dict | None = None):
         super().__init__(parent)
         self.title("Účet")
-        self.configure(bg=PANEL)
+        self.configure(fg_color=PANEL)
         self.resizable(False, False)
         self.result: dict | None = None
         self.account = account or {}
         self.columnconfigure(1, weight=1)
 
-        ttk.Label(self, text="Názov:").grid(row=0, column=0, padx=12, pady=(12, 5), sticky="w")
-        ttk.Label(self, text="Username:").grid(row=1, column=0, padx=12, pady=5, sticky="w")
-        ttk.Label(self, text="Registrovaný e-mail:").grid(row=2, column=0, padx=12, pady=5, sticky="w")
-        ttk.Label(self, text="Heslo:").grid(row=3, column=0, padx=12, pady=5, sticky="w")
-        self.name = ttk.Entry(self, width=35)
-        self.username = ttk.Entry(self, width=35)
-        self.email = ttk.Entry(self, width=35)
-        self.password = ttk.Entry(self, width=35, show="•")
-        self.name.grid(row=0, column=1, padx=(0, 12), pady=(12, 5))
-        self.username.grid(row=1, column=1, padx=(0, 12), pady=5)
-        self.email.grid(row=2, column=1, padx=(0, 12), pady=5)
-        self.password.grid(row=3, column=1, padx=(0, 12), pady=5)
+        for row, label in enumerate(("NÁZOV ÚČTU", "USERNAME", "REGISTROVANÝ E-MAIL", "HESLO")):
+            ctk.CTkLabel(self, text=label, text_color=MUTED,
+                         font=("Segoe UI", 10, "bold")).grid(row=row, column=0, padx=(22, 14), pady=(16 if row == 0 else 7, 7), sticky="w")
+        entry_options = dict(width=300, height=38, corner_radius=9, fg_color=PANEL_ALT,
+                             border_color="#355137", border_width=1, text_color=TEXT)
+        self.name = ctk.CTkEntry(self, placeholder_text="napr. Warrior", **entry_options)
+        self.username = ctk.CTkEntry(self, placeholder_text="prihlasovacie meno", **entry_options)
+        self.email = ctk.CTkEntry(self, placeholder_text="voliteľné", **entry_options)
+        self.password = ctk.CTkEntry(self, placeholder_text="heslo", show="•", **entry_options)
+        self.name.grid(row=0, column=1, padx=(0, 22), pady=(16, 7))
+        self.username.grid(row=1, column=1, padx=(0, 22), pady=7)
+        self.email.grid(row=2, column=1, padx=(0, 22), pady=7)
+        self.password.grid(row=3, column=1, padx=(0, 22), pady=7)
         self.name.insert(0, self.account.get("name", ""))
         self.username.insert(0, self.account.get("username", ""))
         if self.account.get("email"):
@@ -233,10 +214,12 @@ class AccountDialog(tk.Toplevel):
             except Exception as exc:
                 messagebox.showerror(APP_NAME, f"Heslo sa nepodarilo odomknúť:\n{exc}", parent=self)
 
-        buttons = ttk.Frame(self)
-        buttons.grid(row=4, column=0, columnspan=2, padx=12, pady=12, sticky="e")
-        ttk.Button(buttons, text="Zrušiť", command=self.destroy).pack(side="right")
-        ttk.Button(buttons, text="Uložiť", command=self.submit).pack(side="right", padx=(0, 8))
+        buttons = ctk.CTkFrame(self, fg_color="transparent")
+        buttons.grid(row=4, column=0, columnspan=2, padx=22, pady=(14, 22), sticky="e")
+        ctk.CTkButton(buttons, text="ZRUŠIŤ", command=self.destroy, width=100, height=38,
+                      corner_radius=9, fg_color="#282b2d", hover_color="#373b3e").pack(side="right")
+        ctk.CTkButton(buttons, text="ULOŽIŤ ÚČET", command=self.submit, width=145, height=38,
+                      corner_radius=9, fg_color="#4a8d50", hover_color="#61b669").pack(side="right", padx=(0, 10))
         self.bind("<Return>", lambda _event: self.submit())
         self.bind("<Escape>", lambda _event: self.destroy())
         self.transient(parent)
@@ -270,16 +253,15 @@ class AccountDialog(tk.Toplevel):
         self.destroy()
 
 
-class Launcher(tk.Tk):
+class Launcher(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(APP_NAME)
         self.geometry("1100x680")
         self.minsize(900, 600)
-        self.configure(bg=BG)
+        self.configure(fg_color=BG)
         self.config_data = load_config()
         self.busy = False
-        self._configure_styles()
 
         self.canvas = tk.Canvas(self, bg=BG, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
@@ -295,22 +277,23 @@ class Launcher(tk.Tk):
             self.background_id = None
         self.canvas.bind("<Configure>", self._resize_background)
 
-        topbar = tk.Frame(self.canvas, bg="#0c0c0b", highlightbackground="#263b25", highlightthickness=1)
+        topbar = ctk.CTkFrame(self.canvas, fg_color="#0c0c0b", corner_radius=0,
+                              border_color="#263b25", border_width=1)
         self.topbar_window = self.canvas.create_window(0, 0, window=topbar, anchor="nw", width=1100, height=75)
-        nav = tk.Frame(topbar, bg="#0c0c0b")
+        nav = ctk.CTkFrame(topbar, fg_color="transparent")
         nav.pack(side="left", padx=14, fill="y")
         for text, command in (
             ("ÚČTY", lambda: self.accounts_canvas.yview_moveto(0)),
             ("OFICIÁLNY UPDATER", self.launch_official_updater),
             ("NASTAVENIA", self.open_settings),
         ):
-            tk.Button(nav, text=text, command=command, bg="#0c0c0b", fg="#9e998d",
-                      activebackground="#151914", activeforeground="#6fd276", relief="flat",
-                      bd=0, cursor="hand2", font=("Segoe UI", 8, "bold"), padx=12).pack(side="left", fill="y")
-        tk.Label(topbar, text=APP_NAME, bg="#0c0c0b", fg="#aaa397",
-                 font=("Segoe UI", 9, "bold")).place(relx=.5, rely=.3, anchor="center")
-        tk.Label(topbar, text="GIGAFUN • ACCOUNT MANAGER", bg="#0c0c0b", fg="#4d8050",
-                 font=("Segoe UI", 7)).place(relx=.5, rely=.67, anchor="center")
+            ctk.CTkButton(nav, text=text, command=command, width=105 if text != "OFICIÁLNY UPDATER" else 155,
+                          height=40, corner_radius=7, fg_color="transparent", hover_color="#172019",
+                          text_color="#aaa59a", font=("Segoe UI", 8, "bold")).pack(side="left", padx=3, pady=17)
+        ctk.CTkLabel(topbar, text=APP_NAME, fg_color="transparent", text_color="#aaa397",
+                     font=("Segoe UI", 9, "bold")).place(relx=.5, rely=.3, anchor="center")
+        ctk.CTkLabel(topbar, text="GIGAFUN • ACCOUNT MANAGER", fg_color="transparent", text_color="#4d8050",
+                     font=("Segoe UI", 7)).place(relx=.5, rely=.67, anchor="center")
 
         self.notice_id = self.canvas.create_text(18, 98, text=f"Launcher • Version {APP_VERSION}",
                                                   fill="#d3cec2", anchor="w",
@@ -321,28 +304,28 @@ class Launcher(tk.Tk):
         self.brand_subtitle_id = self.canvas.create_text(550, 181, text="NEMESIS ACCOUNT LAUNCHER",
                                                           fill="#71b975", font=("Segoe UI", 8, "bold"))
 
-        accounts_panel = tk.Frame(self.canvas, bg="#0c0e0c", highlightbackground="#30452f", highlightthickness=1)
+        accounts_panel = ctk.CTkFrame(self.canvas, fg_color="#0c0e0c", corner_radius=12,
+                                      border_color="#30452f", border_width=1)
         self.accounts_panel_window = self.canvas.create_window(550, 205, window=accounts_panel,
                                                                 anchor="n", width=690, height=365)
-        section = tk.Frame(accounts_panel, bg="#0c0e0c", padx=22, pady=12)
-        section.pack(fill="x")
-        tk.Label(section, text="MOJE ÚČTY", bg="#0c0e0c", fg="#74c97a",
-                 font=("Segoe UI", 9, "bold")).pack(side="left")
-        tk.Label(section, text="Vyber účet a spusti hru", bg="#0c0e0c", fg="#6f6c64",
-                 font=("Segoe UI", 8)).pack(side="right")
-        tk.Frame(accounts_panel, bg="#263b25", height=1).pack(fill="x")
-        accounts_area = tk.Frame(accounts_panel, bg="#0c0e0c")
+        section = ctk.CTkFrame(accounts_panel, fg_color="transparent", corner_radius=0)
+        section.pack(fill="x", padx=22, pady=12)
+        ctk.CTkLabel(section, text="MOJE ÚČTY", text_color="#74c97a",
+                     font=("Segoe UI", 9, "bold")).pack(side="left")
+        ctk.CTkLabel(section, text="Vyber účet a spusti hru", text_color="#6f6c64",
+                     font=("Segoe UI", 8)).pack(side="right")
+        ctk.CTkFrame(accounts_panel, fg_color="#263b25", height=1, corner_radius=0).pack(fill="x")
+        accounts_area = ctk.CTkFrame(accounts_panel, fg_color="#0c0e0c", corner_radius=0)
         accounts_area.pack(fill="both", expand=True)
         self.accounts_canvas = tk.Canvas(accounts_area, bg=PANEL, highlightthickness=0, bd=0)
-        accounts_scrollbar = tk.Scrollbar(
-            accounts_area, orient="vertical", command=self.accounts_canvas.yview,
-            bg=PANEL_ALT, troughcolor=PANEL, activebackground=GOLD_DARK,
-            highlightthickness=0, bd=0, width=10,
+        accounts_scrollbar = ctk.CTkScrollbar(
+            accounts_area, orientation="vertical", command=self.accounts_canvas.yview,
+            width=10, fg_color="#0c0e0c", button_color="#355137", button_hover_color="#5b8f60",
         )
         self.accounts_canvas.configure(yscrollcommand=accounts_scrollbar.set)
         accounts_scrollbar.pack(side="right", fill="y", padx=(0, 8))
         self.accounts_canvas.pack(side="left", fill="both", expand=True)
-        self.accounts_frame = tk.Frame(self.accounts_canvas, bg=PANEL, padx=28)
+        self.accounts_frame = ctk.CTkFrame(self.accounts_canvas, fg_color=PANEL, corner_radius=0)
         self.accounts_window = self.accounts_canvas.create_window((0, 0), window=self.accounts_frame, anchor="nw")
         self.accounts_frame.bind(
             "<Configure>",
@@ -353,29 +336,18 @@ class Launcher(tk.Tk):
             lambda event: self.accounts_canvas.itemconfigure(self.accounts_window, width=event.width),
         )
         self.bind_all("<MouseWheel>", self._scroll_accounts, add="+")
-        footer = tk.Frame(self.canvas, bg="#0a0b09", padx=24, pady=11,
-                          highlightbackground="#394322", highlightthickness=1)
+        footer = ctk.CTkFrame(self.canvas, fg_color="#0a0b09", corner_radius=0,
+                              border_color="#394322", border_width=1)
         self.footer_window = self.canvas.create_window(0, 680, window=footer, anchor="sw", width=1100, height=76)
-        self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left")
-        footer_meta = tk.Frame(footer, bg="#0a0b09")
-        footer_meta.pack(side="right")
-        self.status = tk.Label(footer_meta, text="●  PRIPRAVENÉ", bg="#0a0b09", fg=MUTED, font=("Segoe UI", 9, "bold"))
+        self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left", padx=24, pady=16)
+        footer_meta = ctk.CTkFrame(footer, fg_color="transparent")
+        footer_meta.pack(side="right", padx=24, pady=12)
+        self.status = ctk.CTkLabel(footer_meta, text="●  PRIPRAVENÉ", text_color=MUTED, font=("Segoe UI", 9, "bold"))
         self.status.pack(anchor="e")
-        tk.Label(footer_meta, text=f"© {APP_AUTHOR}", bg="#0a0b09", fg="#5b5a56",
-                 font=("Segoe UI", 7)).pack(anchor="e", pady=(3, 0))
+        ctk.CTkLabel(footer_meta, text=f"© {APP_AUTHOR}", text_color="#5b5a56",
+                     font=("Segoe UI", 7)).pack(anchor="e")
         self.render_accounts()
         self.after(100, self.first_run)
-
-    def _configure_styles(self) -> None:
-        style = ttk.Style(self)
-        style.theme_use("clam")
-        style.configure("TFrame", background=PANEL)
-        style.configure("TLabel", background=PANEL, foreground=TEXT, font=("Segoe UI", 10))
-        style.configure("TButton", background=GOLD, foreground=BG, padding=(12, 7), borderwidth=0, font=("Segoe UI", 9, "bold"))
-        style.map("TButton", background=[("active", GOLD_HOVER)])
-        style.configure("TEntry", fieldbackground=PANEL_ALT, foreground=TEXT, insertcolor=TEXT, bordercolor=GOLD_DARK)
-        style.configure("TCheckbutton", background=PANEL, foreground=TEXT)
-        style.configure("TSpinbox", fieldbackground=PANEL_ALT, foreground=TEXT, arrowcolor=GOLD)
 
     def _resize_background(self, event: tk.Event) -> None:
         if self.background_id:
@@ -485,7 +457,7 @@ class Launcher(tk.Tk):
         if configured.is_file():
             try:
                 subprocess.Popen([str(configured)], cwd=str(configured.parent))
-                self.status.config(text="●  OFICIÁLNY UPDATER SPUSTENÝ", fg=GOLD)
+                self.status.configure(text="●  OFICIÁLNY UPDATER SPUSTENÝ", text_color=GOLD)
             except OSError as exc:
                 messagebox.showerror(APP_NAME, f"Updater sa nepodarilo spustiť:\n{exc}", parent=self)
 
@@ -529,22 +501,23 @@ class Launcher(tk.Tk):
             child.destroy()
         accounts = self.config_data["accounts"]
         if not accounts:
-            tk.Label(
+            ctk.CTkLabel(
                 self.accounts_frame,
                 text="Zatiaľ nemáš uložený žiadny účet.\nKlikni na „Pridať účet“.",
                 justify="center",
-                bg=PANEL,
-                fg=MUTED,
+                fg_color=PANEL,
+                text_color=MUTED,
                 font=("Segoe UI", 11),
-            ).pack(expand=True)
+            ).pack(expand=True, pady=70)
             return
         for account in accounts:
-            row = tk.Frame(self.accounts_frame, bg=PANEL_ALT, highlightbackground="#292b30", highlightthickness=1)
-            row.pack(fill="x", pady=5)
+            row = ctk.CTkFrame(self.accounts_frame, fg_color=PANEL_ALT, corner_radius=10,
+                               border_color="#303833", border_width=1)
+            row.pack(fill="x", padx=22, pady=5)
             launch = self._gold_button(row, f"▶   {account['name'].upper()}", lambda item=account: self.launch(item), width=28)
             launch.pack(side="left", fill="x", expand=True)
-            tk.Label(row, text=account.get("username", ""), bg=PANEL_ALT, fg=MUTED,
-                     font=("Segoe UI", 9), width=18, anchor="w", padx=12).pack(side="left", fill="y")
+            ctk.CTkLabel(row, text=account.get("username", ""), text_color=MUTED,
+                         font=("Segoe UI", 9), width=135, anchor="w").pack(side="left", padx=12, fill="y")
             self._dark_button(row, "UPRAVIŤ", lambda item=account: self.edit_account(item), width=9).pack(side="left", padx=4, pady=5)
             self._dark_button(row, "×", lambda item=account: self.delete_account(item), width=3, danger=True).pack(side="left", padx=(0, 5), pady=5)
         self.accounts_canvas.yview_moveto(0)
@@ -573,29 +546,53 @@ class Launcher(tk.Tk):
             self.render_accounts()
 
     def open_settings(self) -> None:
-        window = tk.Toplevel(self)
-        window.title("Nastavenia")
-        window.configure(bg=PANEL)
+        window = ctk.CTkToplevel(self)
+        window.title(f"Nastavenia • {APP_NAME}")
+        window.configure(fg_color=PANEL)
+        window.geometry("660x500")
         window.resizable(False, False)
         window.transient(self)
-        ttk.Label(window, text="Cesta k WoW.exe:").grid(row=0, column=0, padx=12, pady=(12, 5), sticky="w")
+        window.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(window, text="NASTAVENIA LAUNCHERU", text_color=TEXT,
+                     font=("Segoe UI", 19, "bold")).grid(row=0, column=0, columnspan=2, padx=24, pady=(22, 4), sticky="w")
+        ctk.CTkLabel(window, text="Cesty k hre a správanie automatického prihlásenia",
+                     text_color=MUTED, font=("Segoe UI", 10)).grid(row=1, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
+
+        ctk.CTkLabel(window, text="CESTA K WOW.EXE", text_color="#75c77a",
+                     font=("Segoe UI", 9, "bold")).grid(row=2, column=0, padx=24, pady=(0, 6), sticky="w")
         path_text = tk.StringVar(value=self.config_data.get("wow_path", "Nenastavená"))
-        ttk.Entry(window, textvariable=path_text, width=52, state="readonly").grid(row=1, column=0, padx=12)
-        ttk.Button(window, text="Vybrať…", command=lambda: (self.choose_wow_path(), path_text.set(self.config_data.get("wow_path", "")))).grid(row=1, column=1, padx=(0, 12))
+        ctk.CTkEntry(window, textvariable=path_text, height=38, corner_radius=8, state="readonly",
+                     fg_color=PANEL_ALT, border_color="#355137").grid(row=3, column=0, padx=(24, 10), sticky="ew")
+        ctk.CTkButton(window, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+                      fg_color="#315f36", hover_color="#477f4c",
+                      command=lambda: (self.choose_wow_path(), path_text.set(self.config_data.get("wow_path", "")))).grid(row=3, column=1, padx=(0, 24))
 
-        ttk.Label(window, text="Oficiálny GigaFun launcher:").grid(row=2, column=0, padx=12, pady=(12, 5), sticky="w")
+        ctk.CTkLabel(window, text="OFICIÁLNY GIGAFUN LAUNCHER", text_color="#75c77a",
+                     font=("Segoe UI", 9, "bold")).grid(row=4, column=0, padx=24, pady=(18, 6), sticky="w")
         official_text = tk.StringVar(value=self.config_data.get("official_launcher_path", "Nenastavená"))
-        ttk.Entry(window, textvariable=official_text, width=52, state="readonly").grid(row=3, column=0, padx=12)
-        ttk.Button(window, text="Vybrať…", command=lambda: (self.choose_official_launcher(), official_text.set(self.config_data.get("official_launcher_path", "")))).grid(row=3, column=1, padx=(0, 12))
+        ctk.CTkEntry(window, textvariable=official_text, height=38, corner_radius=8, state="readonly",
+                     fg_color=PANEL_ALT, border_color="#355137").grid(row=5, column=0, padx=(24, 10), sticky="ew")
+        ctk.CTkButton(window, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+                      fg_color="#315f36", hover_color="#477f4c",
+                      command=lambda: (self.choose_official_launcher(), official_text.set(self.config_data.get("official_launcher_path", "")))).grid(row=5, column=1, padx=(0, 24))
 
-        ttk.Label(window, text="Timeout čakania na okno (sekundy):").grid(row=4, column=0, padx=12, pady=(12, 5), sticky="w")
-        timeout = tk.IntVar(value=int(self.config_data.get("window_timeout", 30)))
-        ttk.Spinbox(window, from_=5, to=120, textvariable=timeout, width=8).grid(row=5, column=0, padx=12, sticky="w")
-        ttk.Label(window, text="Oneskorenie po zobrazení okna (sekundy):").grid(row=6, column=0, padx=12, pady=(12, 5), sticky="w")
-        delay = tk.DoubleVar(value=float(self.config_data.get("ready_delay", 3)))
-        ttk.Spinbox(window, from_=0.5, to=20, increment=0.5, textvariable=delay, width=8).grid(row=7, column=0, padx=12, sticky="w")
+        timing = ctk.CTkFrame(window, fg_color="#151816", corner_radius=10)
+        timing.grid(row=6, column=0, columnspan=2, padx=24, pady=20, sticky="ew")
+        timing.grid_columnconfigure((0, 1), weight=1)
+        timeout = tk.StringVar(value=str(int(self.config_data.get("window_timeout", 30))))
+        delay = tk.StringVar(value=str(float(self.config_data.get("ready_delay", 3))))
+        ctk.CTkLabel(timing, text="TIMEOUT OKNA (s)", text_color=MUTED,
+                     font=("Segoe UI", 8, "bold")).grid(row=0, column=0, padx=16, pady=(14, 5), sticky="w")
+        ctk.CTkLabel(timing, text="ONESKORENIE LOGINU (s)", text_color=MUTED,
+                     font=("Segoe UI", 8, "bold")).grid(row=0, column=1, padx=16, pady=(14, 5), sticky="w")
+        ctk.CTkEntry(timing, textvariable=timeout, height=36, corner_radius=8,
+                     fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=0, padx=16, pady=(0, 14), sticky="ew")
+        ctk.CTkEntry(timing, textvariable=delay, height=36, corner_radius=8,
+                     fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=1, padx=16, pady=(0, 14), sticky="ew")
         close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", True)))
-        ttk.Checkbutton(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after).grid(row=8, column=0, padx=12, pady=12, sticky="w")
+        ctk.CTkSwitch(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after,
+                      progress_color="#4b9a53", button_color="#e0b326").grid(row=7, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
 
         def save() -> None:
             try:
@@ -608,7 +605,9 @@ class Launcher(tk.Tk):
             self.persist()
             window.destroy()
 
-        ttk.Button(window, text="Uložiť", command=save).grid(row=9, column=0, columnspan=2, padx=12, pady=(0, 12), sticky="e")
+        ctk.CTkButton(window, text="ULOŽIŤ NASTAVENIA", command=save, width=190, height=42,
+                      corner_radius=10, fg_color="#d6a91d", hover_color="#f0c532",
+                      text_color="#090b09", font=("Segoe UI", 10, "bold")).grid(row=8, column=0, columnspan=2, padx=24, pady=(0, 22), sticky="e")
 
     def persist(self) -> None:
         try:
@@ -631,7 +630,7 @@ class Launcher(tk.Tk):
             messagebox.showerror(APP_NAME, f"Heslo sa nepodarilo odomknúť:\n{exc}", parent=self)
             return
         self.busy = True
-        self.status.config(text=f"●  SPÚŠŤAM {account['name'].upper()}…", fg=GOLD)
+        self.status.configure(text=f"●  SPÚŠŤAM {account['name'].upper()}…", text_color=GOLD)
         threading.Thread(target=self._login_worker, args=(account["username"], password), daemon=True).start()
 
     def _login_worker(self, username: str, password: str) -> None:
@@ -643,7 +642,7 @@ class Launcher(tk.Tk):
             hwnd = find_window_for_pid(process.pid, float(self.config_data.get("window_timeout", 30)))
             if not hwnd:
                 raise TimeoutError("Okno World of Warcraft sa v nastavenom čase nezobrazilo.")
-            self.after(0, lambda: self.status.config(text="●  ČAKÁM NA WOW…", fg=GOLD))
+            self.after(0, lambda: self.status.configure(text="●  ČAKÁM NA WOW…", text_color=GOLD))
             time.sleep(float(self.config_data.get("ready_delay", 3)))
             activate_window(hwnd)
             time.sleep(0.4)
@@ -662,7 +661,7 @@ class Launcher(tk.Tk):
 
     def _finish_login(self, text: str) -> None:
         self.busy = False
-        self.status.config(text=f"●  {text.upper()}", fg=MUTED)
+        self.status.configure(text=f"●  {text.upper()}", text_color=MUTED)
 
     def _login_failed(self, error: Exception) -> None:
         self._finish_login("Prihlásenie zlyhalo")

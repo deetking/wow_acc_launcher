@@ -1,3 +1,4 @@
 PyAutoGUI==0.9.54
 Pillow>=10.0,<13
+customtkinter==6.0.0
 pyinstaller==6.15.0

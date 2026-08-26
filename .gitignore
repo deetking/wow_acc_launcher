@@ -5,3 +5,5 @@ build/
 dist/
 *.spec
 GigaFun_Launcher.exe
+vendor/**/__pycache__/
+vendor/**/*.pyc

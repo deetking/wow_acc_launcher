@@ -1,8 +1,10 @@
-# WoW Nemesis Launcher v1.3.1
+# WoW Nemesis Launcher v1.4.0
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
 Rozhranie používa vlastné tmavé fantasy pozadie a zeleno-zlatú vizuálnu tému inšpirovanú vzhľadom GigaFun launcheru.
+
+Od verzie 1.4 používa frontend knižnicu [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) 6.0.0 (MIT). Knižnica a jej licenčné súbory sú pribalené v priečinku `vendor`, aby bol build reprodukovateľný.
 
 Autor: **Bc. Juraj Pekarík**
 
@@ -40,7 +42,7 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher_v1.3.1.exe
+dist\WoW_Nemesis_Launcher_v1.4.0.exe
 ```
 
 Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.
