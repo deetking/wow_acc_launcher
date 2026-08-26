@@ -17,7 +17,7 @@ import uuid
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -140,6 +140,62 @@ def activate_window(hwnd: int) -> None:
     user32 = ctypes.windll.user32
     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
     user32.SetForegroundWindow(hwnd)
+
+
+class RoundedButton(tk.Canvas):
+    """Small themed button with real rounded corners and hover feedback."""
+
+    def __init__(
+        self,
+        parent: tk.Misc,
+        text: str,
+        command,
+        width: int,
+        height: int,
+        background: str,
+        hover: str,
+        foreground: str,
+        font: tuple,
+        radius: int = 9,
+    ):
+        parent_bg = parent.cget("bg")
+        super().__init__(parent, width=width, height=height, bg=parent_bg, bd=0,
+                         highlightthickness=0, cursor="hand2", takefocus=1)
+        self.command = command
+        self.normal_color = background
+        self.hover_color = hover
+        self.radius = radius
+        self.shape = self._rounded_rectangle(1, 1, width - 1, height - 1, radius, fill=background)
+        self.caption = self.create_text(width / 2, height / 2, text=text, fill=foreground, font=font)
+        for tag in (self.shape, self.caption):
+            self.tag_bind(tag, "<Button-1>", lambda _event: self.command())
+            self.tag_bind(tag, "<Enter>", self._enter)
+            self.tag_bind(tag, "<Leave>", self._leave)
+        self.bind("<Return>", lambda _event: self.command())
+        self.bind("<space>", lambda _event: self.command())
+        self.bind("<Configure>", self._resize_shape)
+
+    @staticmethod
+    def _shape_points(x1: int, y1: int, x2: int, y2: int, radius: int) -> tuple:
+        return (
+            x1 + radius, y1, x2 - radius, y1, x2, y1, x2, y1 + radius,
+            x2, y2 - radius, x2, y2, x2 - radius, y2, x1 + radius, y2,
+            x1, y2, x1, y2 - radius, x1, y1 + radius, x1, y1,
+        )
+
+    def _rounded_rectangle(self, x1: int, y1: int, x2: int, y2: int, radius: int, **kwargs):
+        return self.create_polygon(self._shape_points(x1, y1, x2, y2, radius),
+                                   smooth=True, splinesteps=20, **kwargs)
+
+    def _resize_shape(self, event: tk.Event) -> None:
+        self.coords(self.shape, *self._shape_points(1, 1, event.width - 1, event.height - 1, self.radius))
+        self.coords(self.caption, event.width / 2, event.height / 2)
+
+    def _enter(self, _event=None) -> None:
+        self.itemconfigure(self.shape, fill=self.hover_color)
+
+    def _leave(self, _event=None) -> None:
+        self.itemconfigure(self.shape, fill=self.normal_color)
 
 
 class AccountDialog(tk.Toplevel):
@@ -299,14 +355,13 @@ class Launcher(tk.Tk):
         self.bind_all("<MouseWheel>", self._scroll_accounts, add="+")
         footer = tk.Frame(self.canvas, bg="#0a0b09", padx=24, pady=11,
                           highlightbackground="#394322", highlightthickness=1)
-        self.footer_window = self.canvas.create_window(0, 680, window=footer, anchor="sw", width=1100, height=82)
+        self.footer_window = self.canvas.create_window(0, 680, window=footer, anchor="sw", width=1100, height=76)
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left")
-        self._dark_button(footer, "OFICIÁLNY UPDATER", self.launch_official_updater, width=19).pack(side="left", padx=8)
-        footer_meta = tk.Frame(footer, bg=PANEL_ALT)
+        footer_meta = tk.Frame(footer, bg="#0a0b09")
         footer_meta.pack(side="right")
-        self.status = tk.Label(footer_meta, text="●  PRIPRAVENÉ", bg=PANEL_ALT, fg=MUTED, font=("Segoe UI", 9, "bold"))
+        self.status = tk.Label(footer_meta, text="●  PRIPRAVENÉ", bg="#0a0b09", fg=MUTED, font=("Segoe UI", 9, "bold"))
         self.status.pack(anchor="e")
-        tk.Label(footer_meta, text=f"© {APP_AUTHOR}", bg=PANEL_ALT, fg="#5b5a56",
+        tk.Label(footer_meta, text=f"© {APP_AUTHOR}", bg="#0a0b09", fg="#5b5a56",
                  font=("Segoe UI", 7)).pack(anchor="e", pady=(3, 0))
         self.render_accounts()
         self.after(100, self.first_run)
@@ -327,7 +382,8 @@ class Launcher(tk.Tk):
             self.canvas.coords(self.background_id, event.width / 2, event.height / 2)
         self.canvas.itemconfigure(self.topbar_window, width=event.width)
         self.canvas.coords(self.accounts_panel_window, event.width / 2, 205)
-        self.canvas.itemconfigure(self.accounts_panel_window, width=min(690, event.width - 80), height=max(285, event.height - 315))
+        panel_height = max(270, min(365, event.height - 309))
+        self.canvas.itemconfigure(self.accounts_panel_window, width=min(690, event.width - 80), height=panel_height)
         self.canvas.coords(self.footer_window, 0, event.height)
         self.canvas.itemconfigure(self.footer_window, width=event.width)
         self.canvas.coords(self.brand_id, event.width / 2, 150)
@@ -342,17 +398,15 @@ class Launcher(tk.Tk):
         direction = -1 if event.delta > 0 else 1
         self.accounts_canvas.yview_scroll(direction * 3, "units")
 
-    def _gold_button(self, parent: tk.Misc, text: str, command, width: int = 22) -> tk.Button:
-        return tk.Button(parent, text=text, command=command, width=width, bg=GOLD, fg=BG,
-                         activebackground=GOLD_HOVER, activeforeground=BG, relief="flat",
-                         bd=0, cursor="hand2", font=("Segoe UI", 10, "bold"), padx=12, pady=10)
+    def _gold_button(self, parent: tk.Misc, text: str, command, width: int = 22) -> RoundedButton:
+        return RoundedButton(parent, text, command, max(120, width * 10), 44, GOLD, GOLD_HOVER,
+                             BG, ("Segoe UI", 9, "bold"), radius=10)
 
-    def _dark_button(self, parent: tk.Misc, text: str, command, width: int = 10, danger: bool = False) -> tk.Button:
+    def _dark_button(self, parent: tk.Misc, text: str, command, width: int = 10, danger: bool = False) -> RoundedButton:
         color = DANGER if danger else PANEL_ALT
-        return tk.Button(parent, text=text, command=command, width=width, bg=color, fg=TEXT,
-                         activebackground=GOLD_DARK if not danger else "#b94b42", activeforeground=TEXT,
-                         highlightbackground=GOLD_DARK, highlightthickness=1, relief="flat",
-                         bd=0, cursor="hand2", font=("Segoe UI", 8, "bold"), padx=8, pady=8)
+        hover = "#b94b42" if danger else "#263b25"
+        return RoundedButton(parent, text, command, max(38, width * 9), 36, color, hover,
+                             TEXT, ("Segoe UI", 8, "bold"), radius=8)
 
     def first_run(self) -> None:
         self.auto_discover_paths()

@@ -1,4 +1,4 @@
-# WoW Nemesis Launcher v1.3.0
+# WoW Nemesis Launcher v1.3.1
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
@@ -40,7 +40,7 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher_v1.3.0.exe
+dist\WoW_Nemesis_Launcher_v1.3.1.exe
 ```
 
 Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.
