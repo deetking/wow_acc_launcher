@@ -25,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.1"
+APP_VERSION = "1.5.2"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -94,6 +94,8 @@ def default_config() -> dict:
         "wowopenbox_path": "",
         "window_timeout": 30,
         "ready_delay": 3.0,
+        "login_click_x": 50,
+        "login_click_y": 48,
         "close_after_login": False,
         "multibox_defaults_applied": True,
         "accounts": [],
@@ -633,7 +635,7 @@ class Launcher(ctk.CTk):
         window = ctk.CTkToplevel(self)
         window.title(f"Nastavenia • {APP_NAME}")
         window.configure(fg_color=PANEL)
-        window.geometry("660x580")
+        window.geometry("660x660")
         window.resizable(False, False)
         window.transient(self)
         window.grid_columnconfigure(0, weight=1)
@@ -675,6 +677,8 @@ class Launcher(ctk.CTk):
         timing.grid_columnconfigure((0, 1), weight=1)
         timeout = tk.StringVar(value=str(int(self.config_data.get("window_timeout", 30))))
         delay = tk.StringVar(value=str(float(self.config_data.get("ready_delay", 3))))
+        click_x = tk.StringVar(value=str(int(self.config_data.get("login_click_x", 50))))
+        click_y = tk.StringVar(value=str(int(self.config_data.get("login_click_y", 48))))
         ctk.CTkLabel(timing, text="TIMEOUT OKNA (s)", text_color=MUTED,
                      font=("Segoe UI", 8, "bold")).grid(row=0, column=0, padx=16, pady=(14, 5), sticky="w")
         ctk.CTkLabel(timing, text="ONESKORENIE LOGINU (s)", text_color=MUTED,
@@ -683,6 +687,14 @@ class Launcher(ctk.CTk):
                      fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=0, padx=16, pady=(0, 14), sticky="ew")
         ctk.CTkEntry(timing, textvariable=delay, height=36, corner_radius=8,
                      fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=1, padx=16, pady=(0, 14), sticky="ew")
+        ctk.CTkLabel(timing, text="LOGIN X (%)", text_color=MUTED,
+                     font=("Segoe UI", 8, "bold")).grid(row=2, column=0, padx=16, pady=(4, 5), sticky="w")
+        ctk.CTkLabel(timing, text="LOGIN Y (%)", text_color=MUTED,
+                     font=("Segoe UI", 8, "bold")).grid(row=2, column=1, padx=16, pady=(4, 5), sticky="w")
+        ctk.CTkEntry(timing, textvariable=click_x, height=36, corner_radius=8,
+                     fg_color="#0d0f0e", border_color="#354237").grid(row=3, column=0, padx=16, pady=(0, 14), sticky="ew")
+        ctk.CTkEntry(timing, textvariable=click_y, height=36, corner_radius=8,
+                     fg_color="#0d0f0e", border_color="#354237").grid(row=3, column=1, padx=16, pady=(0, 14), sticky="ew")
         close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", False)))
         ctk.CTkSwitch(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after,
                       progress_color="#4b9a53", button_color="#e0b326").grid(row=9, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
@@ -691,6 +703,8 @@ class Launcher(ctk.CTk):
             try:
                 self.config_data["window_timeout"] = max(5, int(timeout.get()))
                 self.config_data["ready_delay"] = max(0.5, float(delay.get()))
+                self.config_data["login_click_x"] = min(95, max(5, int(click_x.get())))
+                self.config_data["login_click_y"] = min(95, max(5, int(click_y.get())))
             except (ValueError, tk.TclError):
                 messagebox.showwarning(APP_NAME, "Zadaj platné číselné hodnoty.", parent=window)
                 return
@@ -754,8 +768,12 @@ class Launcher(ctk.CTk):
             rect = get_window_rect(hwnd)
             if rect:
                 left, top, right, bottom = rect
-                pyautogui.click(left + ((right - left) // 2), top + int((bottom - top) * 0.48))
+                x_ratio = min(95, max(5, int(self.config_data.get("login_click_x", 50)))) / 100
+                y_ratio = min(95, max(5, int(self.config_data.get("login_click_y", 48)))) / 100
+                pyautogui.click(left + int((right - left) * x_ratio), top + int((bottom - top) * y_ratio))
                 time.sleep(0.15)
+            activate_window(hwnd)
+            time.sleep(0.15)
             pyautogui.hotkey("ctrl", "a")
             paste_text(pyautogui, username)
             pyautogui.press("tab")
