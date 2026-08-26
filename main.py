@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.7.5"
+APP_VERSION = "1.7.6"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -95,6 +95,7 @@ def default_config() -> dict:
         "autocast_path": "",
         "last_wow_hwnd": "",
         "last_wow_pid": "",
+        "last_wow_account_id": "",
         "last_wow_account": "",
         "last_wow_username": "",
         "window_timeout": 30,
@@ -594,6 +595,7 @@ class Launcher(ctk.CTk):
     def clear_last_wow_window(self) -> None:
         self.config_data["last_wow_hwnd"] = ""
         self.config_data["last_wow_pid"] = ""
+        self.config_data["last_wow_account_id"] = ""
         self.config_data["last_wow_account"] = ""
         self.config_data["last_wow_username"] = ""
         self.persist()
@@ -889,7 +891,15 @@ class Launcher(ctk.CTk):
                                border_color="#303833", border_width=1)
             row.pack(fill="x", padx=22, pady=5)
             launch_text = f"▶   {account['name'].upper()}"
-            if account.get("name") == self.config_data.get("last_wow_account"):
+            last_account_id = str(self.config_data.get("last_wow_account_id", ""))
+            last_account_name = str(self.config_data.get("last_wow_account", ""))
+            last_username = str(self.config_data.get("last_wow_username", ""))
+            is_last_account = (
+                (last_account_id and str(account.get("id", "")) == last_account_id)
+                or (not last_account_id and account.get("name") == last_account_name)
+                or (not last_account_id and last_username and account.get("username") == last_username)
+            )
+            if is_last_account:
                 last_pid = self.config_data.get("last_wow_pid")
                 last_hwnd = self.config_data.get("last_wow_hwnd")
                 if last_pid:
@@ -1079,11 +1089,11 @@ class Launcher(ctk.CTk):
         self.status.configure(text=f"●  SPÚŠŤAM {account['name'].upper()}…", text_color=GOLD)
         threading.Thread(
             target=self._login_worker,
-            args=(account["name"], account["username"], password),
+            args=(account.get("id", ""), account["name"], account["username"], password),
             daemon=True,
         ).start()
 
-    def _login_worker(self, account_name: str, username: str, password: str) -> None:
+    def _login_worker(self, account_id: str, account_name: str, username: str, password: str) -> None:
         try:
             import pyautogui
 
@@ -1095,6 +1105,7 @@ class Launcher(ctk.CTk):
             hwnd_hex = f"0x{hwnd:08X}"
             self.config_data["last_wow_hwnd"] = hwnd_hex
             self.config_data["last_wow_pid"] = str(process.pid)
+            self.config_data["last_wow_account_id"] = account_id
             self.config_data["last_wow_account"] = account_name
             self.config_data["last_wow_username"] = username
             self.persist()
