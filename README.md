@@ -1,4 +1,4 @@
-# WoW Nemesis Launcher v1.6.1
+# WoW Nemesis Launcher v1.7.1
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
@@ -14,6 +14,8 @@ Autor: **Bc. Juraj Pekarík**
 - kontrola a bezpečná oprava `realmlist.wtf` pre GigaFun,
 - samostatné spustenie oficiálneho `GigaFun_Launcher.exe` na aktualizáciu alebo opravu hry,
 - samostatné spustenie externého WowOpenBox nástroja na rozloženie okien,
+- mapovanie externého autoclicker/autocast EXE nástroja a jeho ručné spustenie z launcheru,
+- uloženie posledného spusteného WoW `HWND`/PID pre externé nástroje,
 - detekcia bežiaceho WOB procesu a možnosť ukončiť ho pri konflikte hotkeyov,
 - následné spustenie WoW a prihlásenie vybraného účtu bez zatvorenia launcheru,
 - nastaviteľný relatívny klik do login poľa, vhodný aj pre rôzne rozloženia okien vo WowOpenBoxe,
@@ -27,6 +29,10 @@ Oficiálny GigaFun launcher nie je súčasťou projektu ani výsledného EXE.
 WowOpenBox je externý nástroj. Nie je pribalený do EXE launcheru; používateľ si nastaví cestu k svojmu priečinku `WOB2025` v Nastaveniach.
 
 Ak je v priečinku oficiálne `WOB2025`/`WowOpenBox`/`OpenMultiBoxing` EXE, launcher ho nájde aj v podpriečinku a spustí ho.
+
+Autoclicker a autocast sú iba voliteľne mapované externé `.exe` nástroje. Nie sú súčasťou launcheru; aplikácia si len uloží cestu a spustí ich na kliknutie.
+
+Pri spustení externého nástroja launcher pošle posledné WoW okno aj cez environment premenné: `WOW_NEMESIS_LAST_HWND`, `WOW_NEMESIS_LAST_PID`, `WOW_NEMESIS_LAST_ACCOUNT`, `WOW_NEMESIS_LAST_USERNAME` a `WOW_NEMESIS_CONFIG`.
 
 ## Bezpečnosť
 
@@ -51,7 +57,7 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher_v1.6.1.exe
+dist\WoW_Nemesis_Launcher_v1.7.1.exe
 ```
 
 Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.

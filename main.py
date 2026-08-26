@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.6.1"
+APP_VERSION = "1.7.1"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -91,6 +91,12 @@ def default_config() -> dict:
         "wow_path": "",
         "official_launcher_path": "",
         "wowopenbox_path": "",
+        "autoclicker_path": "",
+        "autocast_path": "",
+        "last_wow_hwnd": "",
+        "last_wow_pid": "",
+        "last_wow_account": "",
+        "last_wow_username": "",
         "window_timeout": 30,
         "ready_delay": 3.0,
         "login_click_x": 50,
@@ -187,6 +193,11 @@ def find_wowopenbox_executable(folder: Path) -> Path | None:
         if found:
             return found
     return matches[0] if matches else None
+
+
+def valid_exe_path(path_value: str) -> bool:
+    path = Path(path_value)
+    return path.is_file() and path.suffix.lower() == ".exe"
 
 
 def list_named_processes(keywords: tuple[str, ...]) -> list[dict]:
@@ -407,9 +418,11 @@ class Launcher(ctk.CTk):
             ("UPDATER", self.launch_official_updater),
             ("WOB", self.launch_wowopenbox),
             ("STOP WOB", self.stop_wowopenbox),
+            ("CLICK", lambda: self.launch_external_tool("autoclicker_path", "AUTOCLICKER")),
+            ("CAST", lambda: self.launch_external_tool("autocast_path", "AUTOCAST")),
             ("SETTINGS", self.open_settings),
         ):
-            nav_width = 92 if text == "STOP WOB" else 82
+            nav_width = 86 if text == "STOP WOB" else 68 if text in {"WOB", "CLICK", "CAST"} else 78
             ctk.CTkButton(nav, text=text, command=command, width=nav_width,
                           height=36, corner_radius=7, fg_color="transparent", hover_color="#172019",
                           text_color="#e2dbcd", font=("Segoe UI", 9, "bold")).pack(side="left", padx=2, pady=20)
@@ -625,6 +638,39 @@ class Launcher(ctk.CTk):
             self.config_data["wowopenbox_path"] = selected
             self.persist()
 
+    def choose_external_tool_path(self, config_key: str, title: str) -> None:
+        selected = filedialog.askopenfilename(
+            title=f"Vyber {title} .exe",
+            filetypes=[("EXE súbory", "*.exe")],
+        )
+        if selected:
+            self.config_data[config_key] = selected
+            self.persist()
+
+    def launch_external_tool(self, config_key: str, title: str) -> None:
+        configured = Path(self.config_data.get(config_key, ""))
+        if not valid_exe_path(str(configured)):
+            messagebox.showinfo(APP_NAME, f"Najprv namapuj {title} .exe v Nastaveniach.", parent=self)
+            self.choose_external_tool_path(config_key, title)
+            configured = Path(self.config_data.get(config_key, ""))
+        if not valid_exe_path(str(configured)):
+            return
+        try:
+            env = os.environ.copy()
+            env.update(
+                {
+                    "WOW_NEMESIS_LAST_HWND": str(self.config_data.get("last_wow_hwnd", "")),
+                    "WOW_NEMESIS_LAST_PID": str(self.config_data.get("last_wow_pid", "")),
+                    "WOW_NEMESIS_LAST_ACCOUNT": str(self.config_data.get("last_wow_account", "")),
+                    "WOW_NEMESIS_LAST_USERNAME": str(self.config_data.get("last_wow_username", "")),
+                    "WOW_NEMESIS_CONFIG": str(CONFIG_FILE),
+                }
+            )
+            subprocess.Popen([str(configured)], cwd=str(configured.parent), env=env)
+            self.status.configure(text=f"●  {title} SPUSTENÝ", text_color=GOLD)
+        except OSError as exc:
+            messagebox.showerror(APP_NAME, f"{title} sa nepodarilo spustiť:\n{exc}", parent=self)
+
     def launch_wowopenbox(self) -> None:
         self.auto_discover_paths()
         configured = Path(self.config_data.get("wowopenbox_path", ""))
@@ -794,45 +840,76 @@ class Launcher(ctk.CTk):
         window = ctk.CTkToplevel(self)
         window.title(f"Nastavenia • {APP_NAME}")
         window.configure(fg_color=PANEL)
-        window.geometry("660x660")
+        window.geometry("700x720")
         window.resizable(False, False)
         window.transient(self)
         window.grid_columnconfigure(0, weight=1)
+        body = ctk.CTkScrollableFrame(window, fg_color=PANEL, corner_radius=0)
+        body.pack(fill="both", expand=True)
+        body.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(window, text="NASTAVENIA LAUNCHERU", text_color=TEXT,
+        ctk.CTkLabel(body, text="NASTAVENIA LAUNCHERU", text_color=TEXT,
                      font=("Segoe UI", 19, "bold")).grid(row=0, column=0, columnspan=2, padx=24, pady=(22, 4), sticky="w")
-        ctk.CTkLabel(window, text="Cesty k hre a správanie automatického prihlásenia",
+        ctk.CTkLabel(body, text="Cesty k hre a správanie automatického prihlásenia",
                      text_color=MUTED, font=("Segoe UI", 10)).grid(row=1, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
 
-        ctk.CTkLabel(window, text="CESTA K WOW.EXE", text_color="#75c77a",
+        ctk.CTkLabel(body, text="CESTA K WOW.EXE", text_color="#75c77a",
                      font=("Segoe UI", 9, "bold")).grid(row=2, column=0, padx=24, pady=(0, 6), sticky="w")
         path_text = tk.StringVar(value=self.config_data.get("wow_path", "Nenastavená"))
-        ctk.CTkEntry(window, textvariable=path_text, height=38, corner_radius=8, state="readonly",
+        ctk.CTkEntry(body, textvariable=path_text, height=38, corner_radius=8, state="readonly",
                      fg_color=PANEL_ALT, border_color="#355137").grid(row=3, column=0, padx=(24, 10), sticky="ew")
-        ctk.CTkButton(window, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+        ctk.CTkButton(body, text="VYBRAŤ", width=100, height=38, corner_radius=8,
                       fg_color="#315f36", hover_color="#477f4c",
                       command=lambda: (self.choose_wow_path(), path_text.set(self.config_data.get("wow_path", "")))).grid(row=3, column=1, padx=(0, 24))
 
-        ctk.CTkLabel(window, text="OFICIÁLNY GIGAFUN LAUNCHER", text_color="#75c77a",
+        ctk.CTkLabel(body, text="OFICIÁLNY GIGAFUN LAUNCHER", text_color="#75c77a",
                      font=("Segoe UI", 9, "bold")).grid(row=4, column=0, padx=24, pady=(18, 6), sticky="w")
         official_text = tk.StringVar(value=self.config_data.get("official_launcher_path", "Nenastavená"))
-        ctk.CTkEntry(window, textvariable=official_text, height=38, corner_radius=8, state="readonly",
+        ctk.CTkEntry(body, textvariable=official_text, height=38, corner_radius=8, state="readonly",
                      fg_color=PANEL_ALT, border_color="#355137").grid(row=5, column=0, padx=(24, 10), sticky="ew")
-        ctk.CTkButton(window, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+        ctk.CTkButton(body, text="VYBRAŤ", width=100, height=38, corner_radius=8,
                       fg_color="#315f36", hover_color="#477f4c",
                       command=lambda: (self.choose_official_launcher(), official_text.set(self.config_data.get("official_launcher_path", "")))).grid(row=5, column=1, padx=(0, 24))
 
-        ctk.CTkLabel(window, text="WOWOPENBOX PRIEČINOK", text_color="#75c77a",
+        ctk.CTkLabel(body, text="WOWOPENBOX PRIEČINOK", text_color="#75c77a",
                      font=("Segoe UI", 9, "bold")).grid(row=6, column=0, padx=24, pady=(18, 6), sticky="w")
         wob_text = tk.StringVar(value=self.config_data.get("wowopenbox_path", "Nenastavený"))
-        ctk.CTkEntry(window, textvariable=wob_text, height=38, corner_radius=8, state="readonly",
+        ctk.CTkEntry(body, textvariable=wob_text, height=38, corner_radius=8, state="readonly",
                      fg_color=PANEL_ALT, border_color="#355137").grid(row=7, column=0, padx=(24, 10), sticky="ew")
-        ctk.CTkButton(window, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+        ctk.CTkButton(body, text="VYBRAŤ", width=100, height=38, corner_radius=8,
                       fg_color="#315f36", hover_color="#477f4c",
                       command=lambda: (self.choose_wowopenbox_path(), wob_text.set(self.config_data.get("wowopenbox_path", "")))).grid(row=7, column=1, padx=(0, 24))
 
-        timing = ctk.CTkFrame(window, fg_color="#151816", corner_radius=10)
-        timing.grid(row=8, column=0, columnspan=2, padx=24, pady=20, sticky="ew")
+        ctk.CTkLabel(body, text="AUTOCLICKER EXE", text_color="#75c77a",
+                     font=("Segoe UI", 9, "bold")).grid(row=8, column=0, padx=24, pady=(18, 6), sticky="w")
+        clicker_text = tk.StringVar(value=self.config_data.get("autoclicker_path", "Nenastavený"))
+        ctk.CTkEntry(body, textvariable=clicker_text, height=38, corner_radius=8, state="readonly",
+                     fg_color=PANEL_ALT, border_color="#355137").grid(row=9, column=0, padx=(24, 10), sticky="ew")
+        ctk.CTkButton(body, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+                      fg_color="#315f36", hover_color="#477f4c",
+                      command=lambda: (self.choose_external_tool_path("autoclicker_path", "AUTOCLICKER"), clicker_text.set(self.config_data.get("autoclicker_path", "")))).grid(row=9, column=1, padx=(0, 24))
+
+        ctk.CTkLabel(body, text="AUTOCAST EXE", text_color="#75c77a",
+                     font=("Segoe UI", 9, "bold")).grid(row=10, column=0, padx=24, pady=(18, 6), sticky="w")
+        autocast_text = tk.StringVar(value=self.config_data.get("autocast_path", "Nenastavený"))
+        ctk.CTkEntry(body, textvariable=autocast_text, height=38, corner_radius=8, state="readonly",
+                     fg_color=PANEL_ALT, border_color="#355137").grid(row=11, column=0, padx=(24, 10), sticky="ew")
+        ctk.CTkButton(body, text="VYBRAŤ", width=100, height=38, corner_radius=8,
+                      fg_color="#315f36", hover_color="#477f4c",
+                      command=lambda: (self.choose_external_tool_path("autocast_path", "AUTOCAST"), autocast_text.set(self.config_data.get("autocast_path", "")))).grid(row=11, column=1, padx=(0, 24))
+
+        ctk.CTkLabel(body, text="POSLEDNÉ WOW OKNO", text_color="#75c77a",
+                     font=("Segoe UI", 9, "bold")).grid(row=12, column=0, padx=24, pady=(18, 6), sticky="w")
+        last_window = (
+            f"HWND {self.config_data.get('last_wow_hwnd') or '-'}"
+            f"   PID {self.config_data.get('last_wow_pid') or '-'}"
+            f"   Účet {self.config_data.get('last_wow_account') or '-'}"
+        )
+        ctk.CTkEntry(body, textvariable=tk.StringVar(value=last_window), height=38, corner_radius=8, state="readonly",
+                     fg_color=PANEL_ALT, border_color="#355137").grid(row=13, column=0, columnspan=2, padx=24, sticky="ew")
+
+        timing = ctk.CTkFrame(body, fg_color="#151816", corner_radius=10)
+        timing.grid(row=14, column=0, columnspan=2, padx=24, pady=20, sticky="ew")
         timing.grid_columnconfigure((0, 1), weight=1)
         timeout = tk.StringVar(value=str(int(self.config_data.get("window_timeout", 30))))
         delay = tk.StringVar(value=str(float(self.config_data.get("ready_delay", 3))))
@@ -855,8 +932,8 @@ class Launcher(ctk.CTk):
         ctk.CTkEntry(timing, textvariable=click_y, height=36, corner_radius=8,
                      fg_color="#0d0f0e", border_color="#354237").grid(row=3, column=1, padx=16, pady=(0, 14), sticky="ew")
         close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", False)))
-        ctk.CTkSwitch(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after,
-                      progress_color="#4b9a53", button_color="#e0b326").grid(row=9, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
+        ctk.CTkSwitch(body, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after,
+                      progress_color="#4b9a53", button_color="#e0b326").grid(row=15, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
 
         def save() -> None:
             try:
@@ -871,9 +948,9 @@ class Launcher(ctk.CTk):
             self.persist()
             window.destroy()
 
-        ctk.CTkButton(window, text="ULOŽIŤ NASTAVENIA", command=save, width=190, height=42,
+        ctk.CTkButton(body, text="ULOŽIŤ NASTAVENIA", command=save, width=190, height=42,
                       corner_radius=10, fg_color="#d6a91d", hover_color="#f0c532",
-                      text_color="#090b09", font=("Segoe UI", 10, "bold")).grid(row=10, column=0, columnspan=2, padx=24, pady=(0, 22), sticky="e")
+                      text_color="#090b09", font=("Segoe UI", 10, "bold")).grid(row=16, column=0, columnspan=2, padx=24, pady=(0, 22), sticky="e")
 
     def persist(self) -> None:
         try:
@@ -909,9 +986,13 @@ class Launcher(ctk.CTk):
             return
         self.busy = True
         self.status.configure(text=f"●  SPÚŠŤAM {account['name'].upper()}…", text_color=GOLD)
-        threading.Thread(target=self._login_worker, args=(account["username"], password), daemon=True).start()
+        threading.Thread(
+            target=self._login_worker,
+            args=(account["name"], account["username"], password),
+            daemon=True,
+        ).start()
 
-    def _login_worker(self, username: str, password: str) -> None:
+    def _login_worker(self, account_name: str, username: str, password: str) -> None:
         try:
             import pyautogui
 
@@ -920,6 +1001,12 @@ class Launcher(ctk.CTk):
             hwnd = find_window_for_pid(process.pid, float(self.config_data.get("window_timeout", 30)))
             if not hwnd:
                 raise TimeoutError("Okno World of Warcraft sa v nastavenom čase nezobrazilo.")
+            hwnd_hex = f"0x{hwnd:08X}"
+            self.config_data["last_wow_hwnd"] = hwnd_hex
+            self.config_data["last_wow_pid"] = str(process.pid)
+            self.config_data["last_wow_account"] = account_name
+            self.config_data["last_wow_username"] = username
+            self.persist()
             self.after(0, lambda: self.status.configure(text="●  ČAKÁM NA WOW…", text_color=GOLD))
             time.sleep(float(self.config_data.get("ready_delay", 3)))
             activate_window(hwnd)
@@ -941,7 +1028,7 @@ class Launcher(ctk.CTk):
             if self.config_data.get("close_after_login", False):
                 self.after(0, self.destroy)
             else:
-                self.after(0, lambda: self._finish_login("Prihlásenie odoslané"))
+                self.after(0, lambda: self._finish_login(f"Login odoslaný • HWND {hwnd_hex} • PID {process.pid}"))
         except Exception as exc:
             self.after(0, lambda error=exc: self._login_failed(error))
         finally:
