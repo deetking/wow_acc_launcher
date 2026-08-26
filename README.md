@@ -1,4 +1,4 @@
-# WoW Nemesis Launcher v1.7.2
+# WoW Nemesis Launcher v1.7.4
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
@@ -17,6 +17,8 @@ Autor: **Bc. Juraj Pekarík**
 - mapovanie externého autoclicker/autocast EXE nástroja a jeho ručné spustenie z launcheru,
 - uloženie posledného spusteného WoW `HWND`/PID pre externé nástroje,
 - zobrazenie posledného WoW `PID/HWND` priamo pri naposledy spustenom účte,
+- automatické vyčistenie `PID/HWND` pri zavretí posledného WoW okna,
+- lepšie škálovanie pozadia vo fullscreen režime a výraznejšie písmo,
 - detekcia bežiaceho WOB procesu a možnosť ukončiť ho pri konflikte hotkeyov,
 - následné spustenie WoW a prihlásenie vybraného účtu bez zatvorenia launcheru,
 - nastaviteľný relatívny klik do login poľa, vhodný aj pre rôzne rozloženia okien vo WowOpenBoxe,
@@ -58,7 +60,7 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher_v1.7.2.exe
+dist\WoW_Nemesis_Launcher_v1.7.4.exe
 ```
 
 Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.

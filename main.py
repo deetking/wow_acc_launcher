@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.7.2"
+APP_VERSION = "1.7.4"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -168,6 +168,43 @@ def get_window_rect(hwnd: int) -> tuple[int, int, int, int] | None:
     if ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):
         return rect.left, rect.top, rect.right, rect.bottom
     return None
+
+
+def parse_hwnd(value: str) -> int | None:
+    try:
+        return int(str(value), 16)
+    except (TypeError, ValueError):
+        return None
+
+
+def process_exists(pid_value: str) -> bool:
+    try:
+        pid = int(pid_value)
+    except (TypeError, ValueError):
+        return False
+    handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return False
+    try:
+        exit_code = wintypes.DWORD()
+        if not ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == 259  # STILL_ACTIVE
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def hwnd_belongs_to_pid(hwnd_value: str, pid_value: str) -> bool:
+    hwnd = parse_hwnd(hwnd_value)
+    try:
+        pid = int(pid_value)
+    except (TypeError, ValueError):
+        return False
+    if not hwnd or not ctypes.windll.user32.IsWindow(hwnd):
+        return False
+    process_id = wintypes.DWORD()
+    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+    return process_id.value == pid
 
 
 def paste_text(pyautogui, value: str) -> None:
@@ -401,11 +438,12 @@ class Launcher(ctk.CTk):
         try:
             from PIL import Image, ImageTk
 
-            artwork = Image.open(resource_path("assets/nemesis_background_v2.png"))
-            artwork = artwork.resize((1100, 680), Image.Resampling.LANCZOS)
+            self.background_source = Image.open(resource_path("assets/nemesis_background_v2.png")).convert("RGB")
+            artwork = self.background_source.resize((1100, 680), Image.Resampling.LANCZOS)
             self.background_image = ImageTk.PhotoImage(artwork)
             self.background_id = self.canvas.create_image(0, 0, image=self.background_image, anchor="center")
         except (ImportError, OSError, tk.TclError):
+            self.background_source = None
             self.background_image = None
             self.background_id = None
         topbar = ctk.CTkFrame(self.canvas, fg_color="#0c0c0b", corner_radius=0,
@@ -425,22 +463,22 @@ class Launcher(ctk.CTk):
             nav_width = 86 if text == "STOP WOB" else 68 if text in {"WOB", "CLICK", "CAST"} else 78
             ctk.CTkButton(nav, text=text, command=command, width=nav_width,
                           height=36, corner_radius=7, fg_color="transparent", hover_color="#172019",
-                          text_color="#e2dbcd", font=("Segoe UI", 9, "bold")).pack(side="left", padx=2, pady=20)
+                          text_color="#f2eadc", font=("Segoe UI", 10, "bold")).pack(side="left", padx=2, pady=20)
         brand_box = ctk.CTkFrame(topbar, fg_color="transparent")
         brand_box.pack(side="right", padx=24, pady=14)
         ctk.CTkLabel(brand_box, text=APP_NAME, fg_color="transparent", text_color="#d7cfbd",
-                     font=("Segoe UI", 11, "bold")).pack(anchor="e")
+                     font=("Segoe UI", 12, "bold")).pack(anchor="e")
         ctk.CTkLabel(brand_box, text="GIGAFUN • ACCOUNT MANAGER", fg_color="transparent", text_color="#5db965",
-                     font=("Segoe UI", 8, "bold")).pack(anchor="e")
+                     font=("Segoe UI", 9, "bold")).pack(anchor="e")
 
         self.notice_id = self.canvas.create_text(24, 104, text=f"Launcher • Version {APP_VERSION}",
                                                   fill="#d3cec2", anchor="w",
-                                                  font=("Segoe UI", 10, "bold"))
+                                                  font=("Segoe UI", 11, "bold"))
         self.notice_line = self.canvas.create_line(20, 91, 20, 117, fill="#63c66b", width=2)
         self.brand_id = self.canvas.create_text(550, 150, text="GIGAFUN", fill="#d5a51d",
-                                                 font=("Georgia", 34, "bold"))
+                                                 font=("Georgia", 38, "bold"))
         self.brand_subtitle_id = self.canvas.create_text(550, 181, text="NEMESIS ACCOUNT LAUNCHER",
-                                                          fill="#82d287", font=("Segoe UI", 9, "bold"))
+                                                          fill="#9bef9f", font=("Segoe UI", 10, "bold"))
 
         accounts_panel = ctk.CTkFrame(self.canvas, fg_color="#0c0e0c", corner_radius=12,
                                       border_color="#30452f", border_width=1)
@@ -449,9 +487,9 @@ class Launcher(ctk.CTk):
         section = ctk.CTkFrame(accounts_panel, fg_color="transparent", corner_radius=0)
         section.pack(fill="x", padx=22, pady=12)
         ctk.CTkLabel(section, text="MOJE ÚČTY", text_color="#74c97a",
-                     font=("Segoe UI", 10, "bold")).pack(side="left")
+                     font=("Segoe UI", 11, "bold")).pack(side="left")
         ctk.CTkLabel(section, text="Vyber účet a spusti hru", text_color="#6f6c64",
-                     font=("Segoe UI", 9, "bold")).pack(side="right")
+                     font=("Segoe UI", 10, "bold")).pack(side="right")
         ctk.CTkFrame(accounts_panel, fg_color="#263b25", height=1, corner_radius=0).pack(fill="x")
         accounts_area = ctk.CTkFrame(accounts_panel, fg_color="#0c0e0c", corner_radius=0)
         accounts_area.pack(fill="both", expand=True)
@@ -482,7 +520,7 @@ class Launcher(ctk.CTk):
         footer_meta.pack(side="right", padx=24, pady=12)
         self.status = ctk.CTkLabel(
             footer_meta, text="●  PRIPRAVENÉ", text_color="#c7c2b6",
-            font=("Segoe UI", 9, "bold"), wraplength=300,
+            font=("Segoe UI", 10, "bold"), wraplength=340,
         )
         self.status.pack(anchor="e")
         ctk.CTkLabel(footer_meta, text=f"© {APP_AUTHOR}", text_color="#5b5a56",
@@ -491,13 +529,14 @@ class Launcher(ctk.CTk):
         self.render_accounts()
         self.after(100, self.first_run)
         self.after(500, self.refresh_wob_status)
+        self.after(1500, self.watch_last_wow_window)
 
     def _resize_background(self, event: tk.Event) -> None:
         required = ("topbar_window", "accounts_panel_window", "footer_window", "brand_id", "brand_subtitle_id")
         if not all(attribute in self.__dict__ for attribute in required):
             return
         if self.background_id:
-            self.canvas.coords(self.background_id, event.width / 2, event.height / 2)
+            self._fit_background(event.width, event.height)
         self.canvas.itemconfigure(self.topbar_window, width=event.width)
         compact = event.height < 650
         brand_y = 136 if compact else 150
@@ -513,6 +552,25 @@ class Launcher(ctk.CTk):
         self.canvas.coords(self.brand_id, event.width / 2, brand_y)
         self.canvas.coords(self.brand_subtitle_id, event.width / 2, subtitle_y)
 
+    def _fit_background(self, width: int, height: int) -> None:
+        if not self.background_source or width < 1 or height < 1:
+            return
+        try:
+            from PIL import Image, ImageTk
+
+            source_width, source_height = self.background_source.size
+            scale = max(width / source_width, height / source_height)
+            target_size = (max(1, int(source_width * scale)), max(1, int(source_height * scale)))
+            image = self.background_source.resize(target_size, Image.Resampling.LANCZOS)
+            left = max(0, (target_size[0] - width) // 2)
+            top = max(0, (target_size[1] - height) // 2)
+            image = image.crop((left, top, left + width, top + height))
+            self.background_image = ImageTk.PhotoImage(image)
+            self.canvas.itemconfigure(self.background_id, image=self.background_image)
+            self.canvas.coords(self.background_id, width / 2, height / 2)
+        except (ImportError, OSError, tk.TclError):
+            pass
+
     def _scroll_accounts(self, event: tk.Event) -> None:
         widget = self.winfo_containing(event.x_root, event.y_root)
         while widget is not None and widget is not self.accounts_canvas:
@@ -524,17 +582,34 @@ class Launcher(ctk.CTk):
 
     def _gold_button(self, parent: tk.Misc, text: str, command, width: int = 22) -> RoundedButton:
         return RoundedButton(parent, text, command, max(120, width * 10), 44, GOLD, GOLD_HOVER,
-                             BG, ("Segoe UI", 10, "bold"), radius=10)
+                             BG, ("Segoe UI", 11, "bold"), radius=10)
 
     def _dark_button(self, parent: tk.Misc, text: str, command, width: int = 10, danger: bool = False) -> RoundedButton:
         color = DANGER if danger else PANEL_ALT
         hover = "#b94b42" if danger else "#263b25"
         return RoundedButton(parent, text, command, max(38, width * 9), 36, color, hover,
-                             TEXT, ("Segoe UI", 8, "bold"), radius=8)
+                             TEXT, ("Segoe UI", 9, "bold"), radius=8)
 
     def refresh_wob_status(self) -> None:
         if list_named_processes(("wob2025", "openmultiboxing", "wowopenbox")):
             self.status.configure(text="●  WOWOPENBOX BEŽÍ", text_color=GOLD)
+
+    def clear_last_wow_window(self) -> None:
+        self.config_data["last_wow_hwnd"] = ""
+        self.config_data["last_wow_pid"] = ""
+        self.config_data["last_wow_account"] = ""
+        self.config_data["last_wow_username"] = ""
+        self.persist()
+        self.render_accounts()
+
+    def watch_last_wow_window(self) -> None:
+        pid = str(self.config_data.get("last_wow_pid", ""))
+        hwnd = str(self.config_data.get("last_wow_hwnd", ""))
+        if pid or hwnd:
+            if not process_exists(pid) or not hwnd_belongs_to_pid(hwnd, pid):
+                self.clear_last_wow_window()
+                self.status.configure(text="●  WOW OKNO ZATVORENÉ", text_color=MUTED)
+        self.after(2000, self.watch_last_wow_window)
 
     def first_run(self) -> None:
         self.auto_discover_paths()
@@ -816,7 +891,7 @@ class Launcher(ctk.CTk):
             launch = self._gold_button(row, launch_text, lambda item=account: self.launch(item), width=36)
             launch.pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(row, text=account.get("username", ""), text_color=MUTED,
-                         font=("Segoe UI", 10, "bold"), width=135, anchor="w").pack(side="left", padx=12, fill="y")
+                         font=("Segoe UI", 11, "bold"), width=135, anchor="w").pack(side="left", padx=12, fill="y")
             self._dark_button(row, "UPRAVIŤ", lambda item=account: self.edit_account(item), width=9).pack(side="left", padx=4, pady=5)
             self._dark_button(row, "×", lambda item=account: self.delete_account(item), width=3, danger=True).pack(side="left", padx=(0, 5), pady=5)
         self.accounts_canvas.yview_moveto(0)
