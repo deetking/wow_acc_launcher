@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.6.0"
+APP_VERSION = "1.6.1"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -567,7 +567,6 @@ class Launcher(ctk.CTk):
                 (
                     path
                     for path in (
-                        resource_path("WOB2025"),
                         app_base / "WOB2025",
                     )
                     if find_wowopenbox_executable(path)
