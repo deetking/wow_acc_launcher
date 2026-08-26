@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -25,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.6"
+APP_VERSION = "1.6.0"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -218,7 +217,12 @@ def list_named_processes(keywords: tuple[str, ...]) -> list[dict]:
             name = buffer.value
             lower_name = name.lower()
             if any(keyword in lower_name for keyword in keywords):
-                matches.append({"pid": pid, "name": name, "windows": []})
+                path_buffer = ctypes.create_unicode_buffer(1024)
+                path_size = wintypes.DWORD(len(path_buffer))
+                path = ""
+                if kernel32.QueryFullProcessImageNameW(handle, 0, path_buffer, ctypes.byref(path_size)):
+                    path = path_buffer.value
+                matches.append({"pid": pid, "name": name, "path": path, "windows": []})
         finally:
             kernel32.CloseHandle(handle)
 
@@ -260,7 +264,11 @@ def terminate_processes(processes: list[dict]) -> None:
 
 
 def describe_processes(processes: list[dict]) -> str:
-    return "\n".join(f"- {process['name']} (PID {process['pid']})" for process in processes)
+    return "\n".join(
+        f"- {process['name']} (PID {process['pid']})"
+        + (f"\n  {process['path']}" if process.get("path") else "")
+        for process in processes
+    )
 
 
 class RoundedButton(ctk.CTkButton):
@@ -469,6 +477,7 @@ class Launcher(ctk.CTk):
         self.canvas.bind("<Configure>", self._resize_background)
         self.render_accounts()
         self.after(100, self.first_run)
+        self.after(500, self.refresh_wob_status)
 
     def _resize_background(self, event: tk.Event) -> None:
         required = ("topbar_window", "accounts_panel_window", "footer_window", "brand_id", "brand_subtitle_id")
@@ -509,6 +518,10 @@ class Launcher(ctk.CTk):
         hover = "#b94b42" if danger else "#263b25"
         return RoundedButton(parent, text, command, max(38, width * 9), 36, color, hover,
                              TEXT, ("Segoe UI", 8, "bold"), radius=8)
+
+    def refresh_wob_status(self) -> None:
+        if list_named_processes(("wob2025", "openmultiboxing", "wowopenbox")):
+            self.status.configure(text="●  WOWOPENBOX BEŽÍ", text_color=GOLD)
 
     def first_run(self) -> None:
         self.auto_discover_paths()
@@ -556,8 +569,6 @@ class Launcher(ctk.CTk):
                     for path in (
                         resource_path("WOB2025"),
                         app_base / "WOB2025",
-                        resource_path("WowOpenBox-4.8.3"),
-                        app_base / "WowOpenBox-4.8.3",
                     )
                     if find_wowopenbox_executable(path)
                 ),
@@ -619,7 +630,7 @@ class Launcher(ctk.CTk):
         self.auto_discover_paths()
         configured = Path(self.config_data.get("wowopenbox_path", ""))
         if not configured.is_dir():
-            messagebox.showinfo(APP_NAME, "Vyber priečinok WOB2025 alebo WowOpenBox.", parent=self)
+            messagebox.showinfo(APP_NAME, "Vyber priečinok WOB2025.", parent=self)
             self.choose_wowopenbox_path()
             configured = Path(self.config_data.get("wowopenbox_path", ""))
         if not configured.is_dir():
@@ -657,19 +668,13 @@ class Launcher(ctk.CTk):
             if executable:
                 subprocess.Popen([str(executable)], cwd=str(executable.parent))
             else:
-                script = configured / "WowOpenBox.tcl"
-                wish = shutil.which("wish.exe") or shutil.which("wish")
-                if not script.is_file() or not wish:
-                    messagebox.showerror(
-                        APP_NAME,
-                        "WowOpenBox priečinok je pridaný, ale nevidím v ňom spustiteľné WOB EXE.\n\n"
-                        "Stiahni oficiálny binary ZIP z GitHub Releases a vlož sem súbor "
-                        "WOB2025/OpenMultiBoxing .exe. Zdrojový ZIP s WowOpenBox.tcl nestačí.\n\n"
-                        "Alternatívne môže fungovať Tcl/Tk runtime s wish.exe a potrebnými balíkmi.",
-                        parent=self,
-                    )
-                    return
-                subprocess.Popen([wish, str(script)], cwd=str(configured))
+                messagebox.showerror(
+                    APP_NAME,
+                    "V priečinku WOB2025 nevidím spustiteľný WOB EXE súbor.\n\n"
+                    "Skontroluj, že tam je napríklad WOB2025-v4.8.3.exe.",
+                    parent=self,
+                )
+                return
             self.status.configure(text="●  WOWOPENBOX SPUSTENÝ", text_color=GOLD)
         except OSError as exc:
             messagebox.showerror(APP_NAME, f"WowOpenBox sa nepodarilo spustiť:\n{exc}", parent=self)
