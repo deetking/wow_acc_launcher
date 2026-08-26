@@ -25,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.5"
+APP_VERSION = "1.5.6"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -391,29 +391,31 @@ class Launcher(ctk.CTk):
             self.background_id = None
         topbar = ctk.CTkFrame(self.canvas, fg_color="#0c0c0b", corner_radius=0,
                               border_color="#263b25", border_width=1)
-        self.topbar_window = self.canvas.create_window(0, 0, window=topbar, anchor="nw", width=1100, height=75)
+        self.topbar_window = self.canvas.create_window(0, 0, window=topbar, anchor="nw", width=1100, height=78)
         nav = ctk.CTkFrame(topbar, fg_color="transparent")
-        nav.pack(side="left", padx=14, fill="y")
+        nav.pack(side="left", padx=12, fill="y")
         for text, command in (
             ("ÚČTY", lambda: self.accounts_canvas.yview_moveto(0)),
-            ("OFICIÁLNY UPDATER", self.launch_official_updater),
-            ("WOWOPENBOX", self.launch_wowopenbox),
+            ("UPDATER", self.launch_official_updater),
+            ("WOB", self.launch_wowopenbox),
             ("STOP WOB", self.stop_wowopenbox),
-            ("NASTAVENIA", self.open_settings),
+            ("SETTINGS", self.open_settings),
         ):
-            nav_width = 155 if text == "OFICIÁLNY UPDATER" else 122 if text == "WOWOPENBOX" else 105
+            nav_width = 92 if text == "STOP WOB" else 82
             ctk.CTkButton(nav, text=text, command=command, width=nav_width,
-                          height=40, corner_radius=7, fg_color="transparent", hover_color="#172019",
-                          text_color="#c5c0b5", font=("Segoe UI", 9, "bold")).pack(side="left", padx=3, pady=17)
-        ctk.CTkLabel(topbar, text=APP_NAME, fg_color="transparent", text_color="#aaa397",
-                     font=("Segoe UI", 11, "bold")).place(relx=.5, rely=.3, anchor="center")
-        ctk.CTkLabel(topbar, text="GIGAFUN • ACCOUNT MANAGER", fg_color="transparent", text_color="#4d8050",
-                     font=("Segoe UI", 8, "bold")).place(relx=.5, rely=.67, anchor="center")
+                          height=36, corner_radius=7, fg_color="transparent", hover_color="#172019",
+                          text_color="#e2dbcd", font=("Segoe UI", 9, "bold")).pack(side="left", padx=2, pady=20)
+        brand_box = ctk.CTkFrame(topbar, fg_color="transparent")
+        brand_box.pack(side="right", padx=24, pady=14)
+        ctk.CTkLabel(brand_box, text=APP_NAME, fg_color="transparent", text_color="#d7cfbd",
+                     font=("Segoe UI", 11, "bold")).pack(anchor="e")
+        ctk.CTkLabel(brand_box, text="GIGAFUN • ACCOUNT MANAGER", fg_color="transparent", text_color="#5db965",
+                     font=("Segoe UI", 8, "bold")).pack(anchor="e")
 
-        self.notice_id = self.canvas.create_text(18, 98, text=f"Launcher • Version {APP_VERSION}",
+        self.notice_id = self.canvas.create_text(24, 104, text=f"Launcher • Version {APP_VERSION}",
                                                   fill="#d3cec2", anchor="w",
                                                   font=("Segoe UI", 10, "bold"))
-        self.notice_line = self.canvas.create_line(14, 86, 14, 112, fill="#63c66b", width=2)
+        self.notice_line = self.canvas.create_line(20, 91, 20, 117, fill="#63c66b", width=2)
         self.brand_id = self.canvas.create_text(550, 150, text="GIGAFUN", fill="#d5a51d",
                                                  font=("Georgia", 34, "bold"))
         self.brand_subtitle_id = self.canvas.create_text(550, 181, text="NEMESIS ACCOUNT LAUNCHER",
@@ -457,7 +459,10 @@ class Launcher(ctk.CTk):
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left", padx=24, pady=16)
         footer_meta = ctk.CTkFrame(footer, fg_color="transparent")
         footer_meta.pack(side="right", padx=24, pady=12)
-        self.status = ctk.CTkLabel(footer_meta, text="●  PRIPRAVENÉ", text_color="#c7c2b6", font=("Segoe UI", 10, "bold"))
+        self.status = ctk.CTkLabel(
+            footer_meta, text="●  PRIPRAVENÉ", text_color="#c7c2b6",
+            font=("Segoe UI", 9, "bold"), wraplength=300,
+        )
         self.status.pack(anchor="e")
         ctk.CTkLabel(footer_meta, text=f"© {APP_AUTHOR}", text_color="#5b5a56",
                      font=("Segoe UI", 7)).pack(anchor="e")
@@ -472,13 +477,19 @@ class Launcher(ctk.CTk):
         if self.background_id:
             self.canvas.coords(self.background_id, event.width / 2, event.height / 2)
         self.canvas.itemconfigure(self.topbar_window, width=event.width)
-        self.canvas.coords(self.accounts_panel_window, event.width / 2, 205)
-        panel_height = max(270, min(365, event.height - 309))
-        self.canvas.itemconfigure(self.accounts_panel_window, width=min(690, event.width - 80), height=panel_height)
+        compact = event.height < 650
+        brand_y = 136 if compact else 150
+        subtitle_y = 164 if compact else 181
+        panel_y = 188 if compact else 205
+        footer_height = 76
+        panel_width = max(620, min(690, event.width - 110))
+        panel_height = max(230, min(365, event.height - panel_y - footer_height - 28))
+        self.canvas.coords(self.accounts_panel_window, event.width / 2, panel_y)
+        self.canvas.itemconfigure(self.accounts_panel_window, width=panel_width, height=panel_height)
         self.canvas.coords(self.footer_window, 0, event.height)
         self.canvas.itemconfigure(self.footer_window, width=event.width)
-        self.canvas.coords(self.brand_id, event.width / 2, 150)
-        self.canvas.coords(self.brand_subtitle_id, event.width / 2, 181)
+        self.canvas.coords(self.brand_id, event.width / 2, brand_y)
+        self.canvas.coords(self.brand_subtitle_id, event.width / 2, subtitle_y)
 
     def _scroll_accounts(self, event: tk.Event) -> None:
         widget = self.winfo_containing(event.x_root, event.y_root)
