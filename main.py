@@ -17,7 +17,7 @@ import uuid
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -154,15 +154,23 @@ class AccountDialog(tk.Toplevel):
 
         ttk.Label(self, text="Názov:").grid(row=0, column=0, padx=12, pady=(12, 5), sticky="w")
         ttk.Label(self, text="Username:").grid(row=1, column=0, padx=12, pady=5, sticky="w")
-        ttk.Label(self, text="Heslo:").grid(row=2, column=0, padx=12, pady=5, sticky="w")
+        ttk.Label(self, text="Registrovaný e-mail:").grid(row=2, column=0, padx=12, pady=5, sticky="w")
+        ttk.Label(self, text="Heslo:").grid(row=3, column=0, padx=12, pady=5, sticky="w")
         self.name = ttk.Entry(self, width=35)
         self.username = ttk.Entry(self, width=35)
+        self.email = ttk.Entry(self, width=35)
         self.password = ttk.Entry(self, width=35, show="•")
         self.name.grid(row=0, column=1, padx=(0, 12), pady=(12, 5))
         self.username.grid(row=1, column=1, padx=(0, 12), pady=5)
-        self.password.grid(row=2, column=1, padx=(0, 12), pady=5)
+        self.email.grid(row=2, column=1, padx=(0, 12), pady=5)
+        self.password.grid(row=3, column=1, padx=(0, 12), pady=5)
         self.name.insert(0, self.account.get("name", ""))
         self.username.insert(0, self.account.get("username", ""))
+        if self.account.get("email"):
+            try:
+                self.email.insert(0, unprotect_secret(self.account["email"]))
+            except Exception as exc:
+                messagebox.showerror(APP_NAME, f"E-mail sa nepodarilo odomknúť:\n{exc}", parent=self)
         if self.account.get("password"):
             try:
                 self.password.insert(0, unprotect_secret(self.account["password"]))
@@ -170,7 +178,7 @@ class AccountDialog(tk.Toplevel):
                 messagebox.showerror(APP_NAME, f"Heslo sa nepodarilo odomknúť:\n{exc}", parent=self)
 
         buttons = ttk.Frame(self)
-        buttons.grid(row=3, column=0, columnspan=2, padx=12, pady=12, sticky="e")
+        buttons.grid(row=4, column=0, columnspan=2, padx=12, pady=12, sticky="e")
         ttk.Button(buttons, text="Zrušiť", command=self.destroy).pack(side="right")
         ttk.Button(buttons, text="Uložiť", command=self.submit).pack(side="right", padx=(0, 8))
         self.bind("<Return>", lambda _event: self.submit())
@@ -180,19 +188,27 @@ class AccountDialog(tk.Toplevel):
         self.name.focus_set()
 
     def submit(self) -> None:
-        name, username, password = self.name.get().strip(), self.username.get().strip(), self.password.get()
+        name = self.name.get().strip()
+        username = self.username.get().strip()
+        email = self.email.get().strip()
+        password = self.password.get()
         if not name or not username or not password:
             messagebox.showwarning(APP_NAME, "Vyplň názov, username aj heslo.", parent=self)
             return
+        if email and ("@" not in email or email.startswith("@") or email.endswith("@")):
+            messagebox.showwarning(APP_NAME, "Zadaj platnú e-mailovú adresu alebo pole nechaj prázdne.", parent=self)
+            return
         try:
             encrypted = protect_secret(password)
+            encrypted_email = protect_secret(email) if email else ""
         except Exception as exc:
-            messagebox.showerror(APP_NAME, f"Heslo sa nepodarilo bezpečne uložiť:\n{exc}", parent=self)
+            messagebox.showerror(APP_NAME, f"Údaje sa nepodarilo bezpečne uložiť:\n{exc}", parent=self)
             return
         self.result = {
             "id": self.account.get("id", uuid.uuid4().hex),
             "name": name,
             "username": username,
+            "email": encrypted_email,
             "password": encrypted,
         }
         self.destroy()
@@ -237,8 +253,28 @@ class Launcher(tk.Tk):
         tk.Label(section, text="VYBER ÚČET", bg=PANEL, fg=GOLD, font=("Segoe UI", 10, "bold")).pack(side="left")
         tk.Label(section, text="Kliknutím spustíš hru a prihlásenie", bg=PANEL, fg=MUTED, font=("Segoe UI", 9)).pack(side="right")
 
-        self.accounts_frame = tk.Frame(shell, bg=PANEL, padx=28)
-        self.accounts_frame.pack(fill="both", expand=True)
+        accounts_area = tk.Frame(shell, bg=PANEL)
+        accounts_area.pack(fill="both", expand=True)
+        self.accounts_canvas = tk.Canvas(accounts_area, bg=PANEL, highlightthickness=0, bd=0)
+        accounts_scrollbar = tk.Scrollbar(
+            accounts_area, orient="vertical", command=self.accounts_canvas.yview,
+            bg=PANEL_ALT, troughcolor=PANEL, activebackground=GOLD_DARK,
+            highlightthickness=0, bd=0, width=10,
+        )
+        self.accounts_canvas.configure(yscrollcommand=accounts_scrollbar.set)
+        accounts_scrollbar.pack(side="right", fill="y", padx=(0, 8))
+        self.accounts_canvas.pack(side="left", fill="both", expand=True)
+        self.accounts_frame = tk.Frame(self.accounts_canvas, bg=PANEL, padx=28)
+        self.accounts_window = self.accounts_canvas.create_window((0, 0), window=self.accounts_frame, anchor="nw")
+        self.accounts_frame.bind(
+            "<Configure>",
+            lambda _event: self.accounts_canvas.configure(scrollregion=self.accounts_canvas.bbox("all")),
+        )
+        self.accounts_canvas.bind(
+            "<Configure>",
+            lambda event: self.accounts_canvas.itemconfigure(self.accounts_window, width=event.width),
+        )
+        self.bind_all("<MouseWheel>", self._scroll_accounts, add="+")
         footer = tk.Frame(shell, bg=PANEL_ALT, padx=28, pady=14)
         footer.pack(fill="x", side="bottom")
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left")
@@ -267,6 +303,15 @@ class Launcher(tk.Tk):
         if self.background_id:
             self.canvas.coords(self.background_id, event.width / 2, event.height / 2)
         self.canvas.coords(self.shell_window, event.width / 2, event.height / 2)
+
+    def _scroll_accounts(self, event: tk.Event) -> None:
+        widget = self.winfo_containing(event.x_root, event.y_root)
+        while widget is not None and widget is not self.accounts_canvas:
+            widget = getattr(widget, "master", None)
+        if widget is not self.accounts_canvas:
+            return
+        direction = -1 if event.delta > 0 else 1
+        self.accounts_canvas.yview_scroll(direction * 3, "units")
 
     def _gold_button(self, parent: tk.Misc, text: str, command, width: int = 22) -> tk.Button:
         return tk.Button(parent, text=text, command=command, width=width, bg=GOLD, fg=BG,
@@ -419,6 +464,7 @@ class Launcher(tk.Tk):
                      font=("Segoe UI", 9), width=18, anchor="w", padx=12).pack(side="left", fill="y")
             self._dark_button(row, "UPRAVIŤ", lambda item=account: self.edit_account(item), width=9).pack(side="left", padx=4, pady=5)
             self._dark_button(row, "×", lambda item=account: self.delete_account(item), width=3, danger=True).pack(side="left", padx=(0, 5), pady=5)
+        self.accounts_canvas.yview_moveto(0)
 
     def add_account(self) -> None:
         dialog = AccountDialog(self)
