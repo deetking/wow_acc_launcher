@@ -1,4 +1,4 @@
-# WoW Nemesis Launcher v1.5.2
+# WoW Nemesis Launcher v1.5.3
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
@@ -23,7 +23,7 @@ Oficiálny GigaFun launcher nie je súčasťou projektu ani výsledného EXE.
 
 ## WowOpenBox
 
-Priečinok `WowOpenBox-4.8.3` je pridaný ako externý GPLv3 nástroj. Launcher ho priamo neupravuje ani nepoužíva na prihlasovanie, iba ho vie spustiť z hornej lišty.
+Priečinok `WOB2025` je pridaný ako externý GPLv3 nástroj. Launcher ho priamo neupravuje ani nepoužíva na prihlasovanie, iba ho vie spustiť z hornej lišty.
 
 Ak je v priečinku oficiálne `WowOpenBox`/`OpenMultiBoxing` EXE, spustí sa EXE. Ak je dostupný iba `WowOpenBox.tcl`, treba mať vo Windows dostupný Tcl/Tk runtime s `wish.exe` a potrebnými balíkmi.
 
@@ -50,7 +50,7 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher_v1.5.2.exe
+dist\WoW_Nemesis_Launcher_v1.5.3.exe
 ```
 
 Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.

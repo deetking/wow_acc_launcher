@@ -25,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.2"
+APP_VERSION = "1.5.3"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -452,9 +452,20 @@ class Launcher(ctk.CTk):
                 self.config_data["official_launcher_path"] = str(nearby.resolve())
                 changed = True
         if not Path(self.config_data.get("wowopenbox_path", "")).is_dir():
-            bundled_wob = resource_path("WowOpenBox-4.8.3")
-            local_wob = Path(__file__).resolve().parent / "WowOpenBox-4.8.3"
-            wob_folder = next((path for path in (bundled_wob, local_wob) if path.is_dir()), None)
+            app_base = Path(__file__).resolve().parent
+            wob_folder = next(
+                (
+                    path
+                    for path in (
+                        resource_path("WOB2025"),
+                        app_base / "WOB2025",
+                        resource_path("WowOpenBox-4.8.3"),
+                        app_base / "WowOpenBox-4.8.3",
+                    )
+                    if path.is_dir()
+                ),
+                None,
+            )
             if wob_folder:
                 self.config_data["wowopenbox_path"] = str(wob_folder.resolve())
                 changed = True
@@ -511,7 +522,7 @@ class Launcher(ctk.CTk):
         self.auto_discover_paths()
         configured = Path(self.config_data.get("wowopenbox_path", ""))
         if not configured.is_dir():
-            messagebox.showinfo(APP_NAME, "Vyber priečinok WowOpenBox-4.8.3.", parent=self)
+            messagebox.showinfo(APP_NAME, "Vyber priečinok WOB2025 alebo WowOpenBox.", parent=self)
             self.choose_wowopenbox_path()
             configured = Path(self.config_data.get("wowopenbox_path", ""))
         if not configured.is_dir():
