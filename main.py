@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.7.1"
+APP_VERSION = "1.7.2"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -805,7 +805,15 @@ class Launcher(ctk.CTk):
             row = ctk.CTkFrame(self.accounts_frame, fg_color=PANEL_ALT, corner_radius=10,
                                border_color="#303833", border_width=1)
             row.pack(fill="x", padx=22, pady=5)
-            launch = self._gold_button(row, f"▶   {account['name'].upper()}", lambda item=account: self.launch(item), width=28)
+            launch_text = f"▶   {account['name'].upper()}"
+            if account.get("name") == self.config_data.get("last_wow_account"):
+                last_pid = self.config_data.get("last_wow_pid")
+                last_hwnd = self.config_data.get("last_wow_hwnd")
+                if last_pid:
+                    launch_text = f"{launch_text}   |   PID {last_pid}"
+                if last_hwnd:
+                    launch_text = f"{launch_text}   |   {last_hwnd}"
+            launch = self._gold_button(row, launch_text, lambda item=account: self.launch(item), width=36)
             launch.pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(row, text=account.get("username", ""), text_color=MUTED,
                          font=("Segoe UI", 10, "bold"), width=135, anchor="w").pack(side="left", padx=12, fill="y")
@@ -1007,6 +1015,7 @@ class Launcher(ctk.CTk):
             self.config_data["last_wow_account"] = account_name
             self.config_data["last_wow_username"] = username
             self.persist()
+            self.after(0, self.render_accounts)
             self.after(0, lambda: self.status.configure(text="●  ČAKÁM NA WOW…", text_color=GOLD))
             time.sleep(float(self.config_data.get("ready_delay", 3)))
             activate_window(hwnd)
