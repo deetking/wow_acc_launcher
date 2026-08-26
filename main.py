@@ -509,9 +509,9 @@ class Launcher(ctk.CTk):
                     messagebox.showerror(
                         APP_NAME,
                         "WowOpenBox priečinok je pridaný, ale nevidím v ňom spustiteľné WOB EXE.\n\n"
-                        "Tento balík obsahuje hlavne Tcl zdroják. Pre priame spustenie potrebuješ buď:\n"
-                        "- oficiálny WowOpenBox/OpenMultiBoxing .exe v rovnakom priečinku,\n"
-                        "- alebo nainštalovaný Tcl/Tk runtime s wish.exe a potrebnými balíkmi.",
+                        "Stiahni oficiálny binary ZIP z GitHub Releases a vlož sem súbor "
+                        "WOB2025/OpenMultiBoxing .exe. Zdrojový ZIP s WowOpenBox.tcl nestačí.\n\n"
+                        "Alternatívne môže fungovať Tcl/Tk runtime s wish.exe a potrebnými balíkmi.",
                         parent=self,
                     )
                     return
