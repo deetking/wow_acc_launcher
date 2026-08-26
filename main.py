@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.7.4"
+APP_VERSION = "1.7.5"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -156,6 +156,23 @@ def find_window_for_pid(pid: int, timeout: float) -> int | None:
     return None
 
 
+def find_existing_window_for_pid(pid: int) -> int | None:
+    user32 = ctypes.windll.user32
+    found: list[int] = []
+    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def visit(hwnd: int, _lparam: int) -> bool:
+        process_id = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+        if process_id.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+            return False
+        return True
+
+    user32.EnumWindows(callback_type(visit), 0)
+    return found[0] if found else None
+
+
 def activate_window(hwnd: int) -> None:
     user32 = ctypes.windll.user32
     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
@@ -168,13 +185,6 @@ def get_window_rect(hwnd: int) -> tuple[int, int, int, int] | None:
     if ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):
         return rect.left, rect.top, rect.right, rect.bottom
     return None
-
-
-def parse_hwnd(value: str) -> int | None:
-    try:
-        return int(str(value), 16)
-    except (TypeError, ValueError):
-        return None
 
 
 def process_exists(pid_value: str) -> bool:
@@ -192,19 +202,6 @@ def process_exists(pid_value: str) -> bool:
         return exit_code.value == 259  # STILL_ACTIVE
     finally:
         ctypes.windll.kernel32.CloseHandle(handle)
-
-
-def hwnd_belongs_to_pid(hwnd_value: str, pid_value: str) -> bool:
-    hwnd = parse_hwnd(hwnd_value)
-    try:
-        pid = int(pid_value)
-    except (TypeError, ValueError):
-        return False
-    if not hwnd or not ctypes.windll.user32.IsWindow(hwnd):
-        return False
-    process_id = wintypes.DWORD()
-    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
-    return process_id.value == pid
 
 
 def paste_text(pyautogui, value: str) -> None:
@@ -606,9 +603,20 @@ class Launcher(ctk.CTk):
         pid = str(self.config_data.get("last_wow_pid", ""))
         hwnd = str(self.config_data.get("last_wow_hwnd", ""))
         if pid or hwnd:
-            if not process_exists(pid) or not hwnd_belongs_to_pid(hwnd, pid):
+            if not process_exists(pid):
                 self.clear_last_wow_window()
                 self.status.configure(text="●  WOW OKNO ZATVORENÉ", text_color=MUTED)
+            else:
+                try:
+                    current_hwnd = find_existing_window_for_pid(int(pid))
+                except ValueError:
+                    current_hwnd = None
+                if current_hwnd:
+                    current_hwnd_hex = f"0x{current_hwnd:08X}"
+                    if current_hwnd_hex != hwnd:
+                        self.config_data["last_wow_hwnd"] = current_hwnd_hex
+                        self.persist()
+                        self.render_accounts()
         self.after(2000, self.watch_last_wow_window)
 
     def first_run(self) -> None:
