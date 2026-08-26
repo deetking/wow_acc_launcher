@@ -25,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -94,7 +94,8 @@ def default_config() -> dict:
         "wowopenbox_path": "",
         "window_timeout": 30,
         "ready_delay": 3.0,
-        "close_after_login": True,
+        "close_after_login": False,
+        "multibox_defaults_applied": True,
         "accounts": [],
     }
 
@@ -105,6 +106,9 @@ def load_config() -> dict:
         saved = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
         if isinstance(saved, dict):
             config.update(saved)
+            if not saved.get("multibox_defaults_applied"):
+                config["close_after_login"] = False
+                config["multibox_defaults_applied"] = True
         if not isinstance(config.get("accounts"), list):
             config["accounts"] = []
     except FileNotFoundError:
@@ -148,7 +152,28 @@ def find_window_for_pid(pid: int, timeout: float) -> int | None:
 def activate_window(hwnd: int) -> None:
     user32 = ctypes.windll.user32
     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+    user32.BringWindowToTop(hwnd)
     user32.SetForegroundWindow(hwnd)
+
+
+def get_window_rect(hwnd: int) -> tuple[int, int, int, int] | None:
+    rect = wintypes.RECT()
+    if ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return rect.left, rect.top, rect.right, rect.bottom
+    return None
+
+
+def paste_text(pyautogui, value: str) -> None:
+    try:
+        import pyperclip
+
+        previous = pyperclip.paste()
+        pyperclip.copy(value)
+        pyautogui.hotkey("ctrl", "v")
+        time.sleep(0.08)
+        pyperclip.copy(previous)
+    except Exception:
+        pyautogui.write(value, interval=0.03)
 
 
 class RoundedButton(ctk.CTkButton):
@@ -658,7 +683,7 @@ class Launcher(ctk.CTk):
                      fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=0, padx=16, pady=(0, 14), sticky="ew")
         ctk.CTkEntry(timing, textvariable=delay, height=36, corner_radius=8,
                      fg_color="#0d0f0e", border_color="#354237").grid(row=1, column=1, padx=16, pady=(0, 14), sticky="ew")
-        close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", True)))
+        close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", False)))
         ctk.CTkSwitch(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after,
                       progress_color="#4b9a53", button_color="#e0b326").grid(row=9, column=0, columnspan=2, padx=24, pady=(0, 18), sticky="w")
 
@@ -725,12 +750,18 @@ class Launcher(ctk.CTk):
             self.after(0, lambda: self.status.configure(text="●  ČAKÁM NA WOW…", text_color=GOLD))
             time.sleep(float(self.config_data.get("ready_delay", 3)))
             activate_window(hwnd)
-            time.sleep(0.4)
-            pyautogui.write(username, interval=0.03)
+            time.sleep(0.8)
+            rect = get_window_rect(hwnd)
+            if rect:
+                left, top, right, bottom = rect
+                pyautogui.click(left + ((right - left) // 2), top + int((bottom - top) * 0.48))
+                time.sleep(0.15)
+            pyautogui.hotkey("ctrl", "a")
+            paste_text(pyautogui, username)
             pyautogui.press("tab")
-            pyautogui.write(password, interval=0.03)
+            paste_text(pyautogui, password)
             pyautogui.press("enter")
-            if self.config_data.get("close_after_login", True):
+            if self.config_data.get("close_after_login", False):
                 self.after(0, self.destroy)
             else:
                 self.after(0, lambda: self._finish_login("Prihlásenie odoslané"))
