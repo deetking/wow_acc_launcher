@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.4.1"
+APP_VERSION = "1.4.2"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -619,6 +619,18 @@ class Launcher(ctk.CTk):
 
     def launch(self, account: dict) -> None:
         if self.busy:
+            return
+        try:
+            import pyautogui  # noqa: F401
+        except ImportError as exc:
+            messagebox.showerror(
+                APP_NAME,
+                "Chýba knižnica PyAutoGUI, preto launcher nevie automaticky vyplniť login.\n\n"
+                "Ak appku spúšťaš zo zdrojového kódu, spusti:\n"
+                "python -m pip install -r requirements.txt\n\n"
+                "Ak používaš EXE, pregeneruj ho cez build.bat.",
+                parent=self,
+            )
             return
         if not self.valid_wow_path():
             messagebox.showwarning(APP_NAME, "Nastav platnú cestu k WoW.exe.", parent=self)
