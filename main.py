@@ -25,7 +25,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.5.4"
+APP_VERSION = "1.5.5"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -190,6 +190,79 @@ def find_wowopenbox_executable(folder: Path) -> Path | None:
     return matches[0] if matches else None
 
 
+def list_named_processes(keywords: tuple[str, ...]) -> list[dict]:
+    kernel32 = ctypes.windll.kernel32
+    psapi = ctypes.windll.psapi
+    user32 = ctypes.windll.user32
+    process_ids = (wintypes.DWORD * 4096)()
+    bytes_returned = wintypes.DWORD()
+    if not psapi.EnumProcesses(
+        ctypes.byref(process_ids), ctypes.sizeof(process_ids), ctypes.byref(bytes_returned)
+    ):
+        return []
+    count = bytes_returned.value // ctypes.sizeof(wintypes.DWORD)
+    current_pid = os.getpid()
+    matches: list[dict] = []
+    access = 0x0400 | 0x0010  # PROCESS_QUERY_INFORMATION | PROCESS_VM_READ
+    for index in range(count):
+        pid = int(process_ids[index])
+        if not pid or pid == current_pid:
+            continue
+        handle = kernel32.OpenProcess(access, False, pid)
+        if not handle:
+            continue
+        try:
+            buffer = ctypes.create_unicode_buffer(260)
+            if not psapi.GetModuleBaseNameW(handle, None, buffer, len(buffer)):
+                continue
+            name = buffer.value
+            lower_name = name.lower()
+            if any(keyword in lower_name for keyword in keywords):
+                matches.append({"pid": pid, "name": name, "windows": []})
+        finally:
+            kernel32.CloseHandle(handle)
+
+    if not matches:
+        return []
+
+    by_pid = {item["pid"]: item for item in matches}
+    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def visit(hwnd: int, _lparam: int) -> bool:
+        process_id = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+        if process_id.value in by_pid and user32.IsWindowVisible(hwnd):
+            by_pid[process_id.value]["windows"].append(hwnd)
+        return True
+
+    user32.EnumWindows(callback_type(visit), 0)
+    return matches
+
+
+def close_process_windows(processes: list[dict]) -> None:
+    user32 = ctypes.windll.user32
+    for process in processes:
+        for hwnd in process.get("windows", []):
+            user32.PostMessageW(hwnd, 0x0010, 0, 0)  # WM_CLOSE
+
+
+def terminate_processes(processes: list[dict]) -> None:
+    kernel32 = ctypes.windll.kernel32
+    access = 0x0001  # PROCESS_TERMINATE
+    for process in processes:
+        handle = kernel32.OpenProcess(access, False, int(process["pid"]))
+        if not handle:
+            continue
+        try:
+            kernel32.TerminateProcess(handle, 1)
+        finally:
+            kernel32.CloseHandle(handle)
+
+
+def describe_processes(processes: list[dict]) -> str:
+    return "\n".join(f"- {process['name']} (PID {process['pid']})" for process in processes)
+
+
 class RoundedButton(ctk.CTkButton):
     def __init__(
         self,
@@ -325,6 +398,7 @@ class Launcher(ctk.CTk):
             ("ÚČTY", lambda: self.accounts_canvas.yview_moveto(0)),
             ("OFICIÁLNY UPDATER", self.launch_official_updater),
             ("WOWOPENBOX", self.launch_wowopenbox),
+            ("STOP WOB", self.stop_wowopenbox),
             ("NASTAVENIA", self.open_settings),
         ):
             nav_width = 155 if text == "OFICIÁLNY UPDATER" else 122 if text == "WOWOPENBOX" else 105
@@ -540,6 +614,33 @@ class Launcher(ctk.CTk):
         if not configured.is_dir():
             return
 
+        running = list_named_processes(("wob2025", "openmultiboxing", "wowopenbox"))
+        if running:
+            if not messagebox.askyesno(
+                APP_NAME,
+                "WowOpenBox už beží a nová kópia by mala konflikt hotkeyov.\n\n"
+                f"{describe_processes(running)}\n\n"
+                "Chceš bežiaci WowOpenBox ukončiť a spustiť znova?",
+                parent=self,
+            ):
+                self.status.configure(text="●  WOWOPENBOX UŽ BEŽÍ", text_color=MUTED)
+                return
+            close_process_windows(running)
+            time.sleep(1.2)
+            remaining = list_named_processes(("wob2025", "openmultiboxing", "wowopenbox"))
+            if remaining:
+                if not messagebox.askyesno(
+                    APP_NAME,
+                    "WowOpenBox sa nezavrel normálne.\n\n"
+                    f"{describe_processes(remaining)}\n\n"
+                    "Chceš ho ukončiť natvrdo?",
+                    parent=self,
+                ):
+                    self.status.configure(text="●  WOWOPENBOX OSTAL SPUSTENÝ", text_color=MUTED)
+                    return
+                terminate_processes(remaining)
+                time.sleep(0.5)
+
         executable = find_wowopenbox_executable(configured)
         try:
             if executable:
@@ -561,6 +662,34 @@ class Launcher(ctk.CTk):
             self.status.configure(text="●  WOWOPENBOX SPUSTENÝ", text_color=GOLD)
         except OSError as exc:
             messagebox.showerror(APP_NAME, f"WowOpenBox sa nepodarilo spustiť:\n{exc}", parent=self)
+
+    def stop_wowopenbox(self) -> None:
+        running = list_named_processes(("wob2025", "openmultiboxing", "wowopenbox"))
+        if not running:
+            self.status.configure(text="●  WOWOPENBOX NEBEŽÍ", text_color=MUTED)
+            messagebox.showinfo(APP_NAME, "Nenašiel som bežiaci WowOpenBox/WOB2025 proces.", parent=self)
+            return
+        if not messagebox.askyesno(
+            APP_NAME,
+            "Ukončiť bežiaci WowOpenBox?\n\n"
+            f"{describe_processes(running)}",
+            parent=self,
+        ):
+            return
+        close_process_windows(running)
+        time.sleep(1.2)
+        remaining = list_named_processes(("wob2025", "openmultiboxing", "wowopenbox"))
+        if remaining:
+            if not messagebox.askyesno(
+                APP_NAME,
+                "WowOpenBox sa nezavrel normálne.\n\n"
+                f"{describe_processes(remaining)}\n\n"
+                "Chceš ho ukončiť natvrdo?",
+                parent=self,
+            ):
+                return
+            terminate_processes(remaining)
+        self.status.configure(text="●  WOWOPENBOX UKONČENÝ", text_color=MUTED)
 
     def ensure_realmlist(self) -> bool:
         wow_dir = Path(self.config_data["wow_path"]).parent

@@ -1,4 +1,4 @@
-# WoW Nemesis Launcher v1.5.4
+# WoW Nemesis Launcher v1.5.5
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
@@ -14,6 +14,7 @@ Autor: **Bc. Juraj Pekarík**
 - kontrola a bezpečná oprava `realmlist.wtf` pre GigaFun,
 - samostatné spustenie oficiálneho `GigaFun_Launcher.exe` na aktualizáciu alebo opravu hry,
 - samostatné spustenie priloženého/pripojeného WowOpenBox nástroja na rozloženie okien,
+- detekcia bežiaceho WOB procesu a možnosť ukončiť ho pri konflikte hotkeyov,
 - následné spustenie WoW a prihlásenie vybraného účtu bez zatvorenia launcheru,
 - nastaviteľný relatívny klik do login poľa, vhodný aj pre rôzne rozloženia okien vo WowOpenBoxe,
 - rolovateľný zoznam vhodný aj pre veľa účtov,
@@ -50,7 +51,7 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher_v1.5.4.exe
+dist\WoW_Nemesis_Launcher_v1.5.5.exe
 ```
 
 Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.
