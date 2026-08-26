@@ -18,7 +18,7 @@ import uuid
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
 APP_VERSION = "1.1.0"
-APP_AUTHOR = "Juraj Pekarík"
+APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
 CONFIG_DIR = Path(os.environ.get("APPDATA", Path.home())) / "WoWNemesisLauncher"
@@ -229,11 +229,7 @@ class Launcher(tk.Tk):
         tk.Label(brand, text=f"PROJECT  •  NEMESIS    v{APP_VERSION}", bg=PANEL, fg=GOLD, font=("Georgia", 10, "bold")).pack(anchor="w")
         tk.Label(brand, text="GIGAFUN", bg=PANEL, fg=TEXT, font=("Georgia", 29, "bold")).pack(anchor="w", pady=(2, 0))
         tk.Label(brand, text="WoW TBC 2.4.3  ·  ACCOUNT LAUNCHER", bg=PANEL, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w")
-        header_actions = tk.Frame(header, bg=PANEL)
-        header_actions.pack(side="right")
-        tk.Label(header_actions, text=f"Vytvoril {APP_AUTHOR}", bg=PANEL, fg=MUTED,
-                 font=("Segoe UI", 8, "italic")).pack(anchor="e", pady=(0, 5))
-        self._dark_button(header_actions, "⚙  NASTAVENIA", self.open_settings, width=16).pack(anchor="e")
+        self._dark_button(header, "⚙  NASTAVENIA", self.open_settings, width=16).pack(side="right", pady=12)
 
         tk.Frame(shell, bg=GOLD_DARK, height=1).pack(fill="x")
         section = tk.Frame(shell, bg=PANEL, padx=28, pady=16)
@@ -247,8 +243,12 @@ class Launcher(tk.Tk):
         footer.pack(fill="x", side="bottom")
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left")
         self._dark_button(footer, "OFICIÁLNY UPDATER", self.launch_official_updater, width=19).pack(side="left", padx=8)
-        self.status = tk.Label(footer, text="●  PRIPRAVENÉ", bg=PANEL_ALT, fg=MUTED, font=("Segoe UI", 9, "bold"))
-        self.status.pack(side="right", pady=8)
+        footer_meta = tk.Frame(footer, bg=PANEL_ALT)
+        footer_meta.pack(side="right")
+        self.status = tk.Label(footer_meta, text="●  PRIPRAVENÉ", bg=PANEL_ALT, fg=MUTED, font=("Segoe UI", 9, "bold"))
+        self.status.pack(anchor="e")
+        tk.Label(footer_meta, text=f"© {APP_AUTHOR}", bg=PANEL_ALT, fg="#5b5a56",
+                 font=("Segoe UI", 7)).pack(anchor="e", pady=(3, 0))
         self.render_accounts()
         self.after(100, self.first_run)
 

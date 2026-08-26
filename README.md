@@ -4,7 +4,7 @@ Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na ulož
 
 Rozhranie používa vlastné tmavé fantasy pozadie a zlato-antracitovú vizuálnu tému inšpirovanú webom Project Nemesis.
 
-Autor: **Juraj Pekarík**
+Autor: **Bc. Juraj Pekarík**
 
 ## Companion funkcie
 
