@@ -24,7 +24,7 @@ ctk.set_appearance_mode("dark")
 
 
 APP_BASE_NAME = "WoW Nemesis Launcher"
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 APP_AUTHOR = "Bc. Juraj Pekarík"
 APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
 REALMLIST = "gigafun.project-nemesis.cz"
@@ -275,8 +275,6 @@ class Launcher(ctk.CTk):
         except (ImportError, OSError, tk.TclError):
             self.background_image = None
             self.background_id = None
-        self.canvas.bind("<Configure>", self._resize_background)
-
         topbar = ctk.CTkFrame(self.canvas, fg_color="#0c0c0b", corner_radius=0,
                               border_color="#263b25", border_width=1)
         self.topbar_window = self.canvas.create_window(0, 0, window=topbar, anchor="nw", width=1100, height=75)
@@ -289,20 +287,20 @@ class Launcher(ctk.CTk):
         ):
             ctk.CTkButton(nav, text=text, command=command, width=105 if text != "OFICIÁLNY UPDATER" else 155,
                           height=40, corner_radius=7, fg_color="transparent", hover_color="#172019",
-                          text_color="#aaa59a", font=("Segoe UI", 8, "bold")).pack(side="left", padx=3, pady=17)
+                          text_color="#c5c0b5", font=("Segoe UI", 9, "bold")).pack(side="left", padx=3, pady=17)
         ctk.CTkLabel(topbar, text=APP_NAME, fg_color="transparent", text_color="#aaa397",
-                     font=("Segoe UI", 9, "bold")).place(relx=.5, rely=.3, anchor="center")
+                     font=("Segoe UI", 11, "bold")).place(relx=.5, rely=.3, anchor="center")
         ctk.CTkLabel(topbar, text="GIGAFUN • ACCOUNT MANAGER", fg_color="transparent", text_color="#4d8050",
-                     font=("Segoe UI", 7)).place(relx=.5, rely=.67, anchor="center")
+                     font=("Segoe UI", 8, "bold")).place(relx=.5, rely=.67, anchor="center")
 
         self.notice_id = self.canvas.create_text(18, 98, text=f"Launcher • Version {APP_VERSION}",
                                                   fill="#d3cec2", anchor="w",
-                                                  font=("Segoe UI", 9, "bold"))
+                                                  font=("Segoe UI", 10, "bold"))
         self.notice_line = self.canvas.create_line(14, 86, 14, 112, fill="#63c66b", width=2)
         self.brand_id = self.canvas.create_text(550, 150, text="GIGAFUN", fill="#d5a51d",
-                                                 font=("Georgia", 30, "bold"))
+                                                 font=("Georgia", 34, "bold"))
         self.brand_subtitle_id = self.canvas.create_text(550, 181, text="NEMESIS ACCOUNT LAUNCHER",
-                                                          fill="#71b975", font=("Segoe UI", 8, "bold"))
+                                                          fill="#82d287", font=("Segoe UI", 9, "bold"))
 
         accounts_panel = ctk.CTkFrame(self.canvas, fg_color="#0c0e0c", corner_radius=12,
                                       border_color="#30452f", border_width=1)
@@ -311,9 +309,9 @@ class Launcher(ctk.CTk):
         section = ctk.CTkFrame(accounts_panel, fg_color="transparent", corner_radius=0)
         section.pack(fill="x", padx=22, pady=12)
         ctk.CTkLabel(section, text="MOJE ÚČTY", text_color="#74c97a",
-                     font=("Segoe UI", 9, "bold")).pack(side="left")
+                     font=("Segoe UI", 10, "bold")).pack(side="left")
         ctk.CTkLabel(section, text="Vyber účet a spusti hru", text_color="#6f6c64",
-                     font=("Segoe UI", 8)).pack(side="right")
+                     font=("Segoe UI", 9, "bold")).pack(side="right")
         ctk.CTkFrame(accounts_panel, fg_color="#263b25", height=1, corner_radius=0).pack(fill="x")
         accounts_area = ctk.CTkFrame(accounts_panel, fg_color="#0c0e0c", corner_radius=0)
         accounts_area.pack(fill="both", expand=True)
@@ -342,14 +340,18 @@ class Launcher(ctk.CTk):
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left", padx=24, pady=16)
         footer_meta = ctk.CTkFrame(footer, fg_color="transparent")
         footer_meta.pack(side="right", padx=24, pady=12)
-        self.status = ctk.CTkLabel(footer_meta, text="●  PRIPRAVENÉ", text_color=MUTED, font=("Segoe UI", 9, "bold"))
+        self.status = ctk.CTkLabel(footer_meta, text="●  PRIPRAVENÉ", text_color="#c7c2b6", font=("Segoe UI", 10, "bold"))
         self.status.pack(anchor="e")
         ctk.CTkLabel(footer_meta, text=f"© {APP_AUTHOR}", text_color="#5b5a56",
                      font=("Segoe UI", 7)).pack(anchor="e")
+        self.canvas.bind("<Configure>", self._resize_background)
         self.render_accounts()
         self.after(100, self.first_run)
 
     def _resize_background(self, event: tk.Event) -> None:
+        required = ("topbar_window", "accounts_panel_window", "footer_window", "brand_id", "brand_subtitle_id")
+        if not all(attribute in self.__dict__ for attribute in required):
+            return
         if self.background_id:
             self.canvas.coords(self.background_id, event.width / 2, event.height / 2)
         self.canvas.itemconfigure(self.topbar_window, width=event.width)
@@ -372,7 +374,7 @@ class Launcher(ctk.CTk):
 
     def _gold_button(self, parent: tk.Misc, text: str, command, width: int = 22) -> RoundedButton:
         return RoundedButton(parent, text, command, max(120, width * 10), 44, GOLD, GOLD_HOVER,
-                             BG, ("Segoe UI", 9, "bold"), radius=10)
+                             BG, ("Segoe UI", 10, "bold"), radius=10)
 
     def _dark_button(self, parent: tk.Misc, text: str, command, width: int = 10, danger: bool = False) -> RoundedButton:
         color = DANGER if danger else PANEL_ALT
@@ -517,7 +519,7 @@ class Launcher(ctk.CTk):
             launch = self._gold_button(row, f"▶   {account['name'].upper()}", lambda item=account: self.launch(item), width=28)
             launch.pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(row, text=account.get("username", ""), text_color=MUTED,
-                         font=("Segoe UI", 9), width=135, anchor="w").pack(side="left", padx=12, fill="y")
+                         font=("Segoe UI", 10, "bold"), width=135, anchor="w").pack(side="left", padx=12, fill="y")
             self._dark_button(row, "UPRAVIŤ", lambda item=account: self.edit_account(item), width=9).pack(side="left", padx=4, pady=5)
             self._dark_button(row, "×", lambda item=account: self.delete_account(item), width=3, danger=True).pack(side="left", padx=(0, 5), pady=5)
         self.accounts_canvas.yview_moveto(0)
