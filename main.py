@@ -6,6 +6,7 @@ from ctypes import wintypes
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import threading
@@ -15,7 +16,11 @@ from tkinter import filedialog, messagebox, ttk
 import uuid
 
 
-APP_NAME = "WoW Nemesis Launcher"
+APP_BASE_NAME = "WoW Nemesis Launcher"
+APP_VERSION = "1.1.0"
+APP_AUTHOR = "Juraj Pekarík"
+APP_NAME = f"{APP_BASE_NAME} v{APP_VERSION}"
+REALMLIST = "gigafun.project-nemesis.cz"
 CONFIG_DIR = Path(os.environ.get("APPDATA", Path.home())) / "WoWNemesisLauncher"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
@@ -77,6 +82,7 @@ def unprotect_secret(value: str) -> str:
 def default_config() -> dict:
     return {
         "wow_path": "",
+        "official_launcher_path": "",
         "window_timeout": 30,
         "ready_delay": 3.0,
         "close_after_login": True,
@@ -220,10 +226,14 @@ class Launcher(tk.Tk):
         header.pack(fill="x")
         brand = tk.Frame(header, bg=PANEL)
         brand.pack(side="left")
-        tk.Label(brand, text="PROJECT  •  NEMESIS", bg=PANEL, fg=GOLD, font=("Georgia", 10, "bold")).pack(anchor="w")
+        tk.Label(brand, text=f"PROJECT  •  NEMESIS    v{APP_VERSION}", bg=PANEL, fg=GOLD, font=("Georgia", 10, "bold")).pack(anchor="w")
         tk.Label(brand, text="GIGAFUN", bg=PANEL, fg=TEXT, font=("Georgia", 29, "bold")).pack(anchor="w", pady=(2, 0))
         tk.Label(brand, text="WoW TBC 2.4.3  ·  ACCOUNT LAUNCHER", bg=PANEL, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w")
-        self._dark_button(header, "⚙  NASTAVENIA", self.open_settings, width=16).pack(side="right", pady=12)
+        header_actions = tk.Frame(header, bg=PANEL)
+        header_actions.pack(side="right")
+        tk.Label(header_actions, text=f"Vytvoril {APP_AUTHOR}", bg=PANEL, fg=MUTED,
+                 font=("Segoe UI", 8, "italic")).pack(anchor="e", pady=(0, 5))
+        self._dark_button(header_actions, "⚙  NASTAVENIA", self.open_settings, width=16).pack(anchor="e")
 
         tk.Frame(shell, bg=GOLD_DARK, height=1).pack(fill="x")
         section = tk.Frame(shell, bg=PANEL, padx=28, pady=16)
@@ -236,6 +246,7 @@ class Launcher(tk.Tk):
         footer = tk.Frame(shell, bg=PANEL_ALT, padx=28, pady=14)
         footer.pack(fill="x", side="bottom")
         self._gold_button(footer, "+  PRIDAŤ ÚČET", self.add_account, width=18).pack(side="left")
+        self._dark_button(footer, "OFICIÁLNY UPDATER", self.launch_official_updater, width=19).pack(side="left", padx=8)
         self.status = tk.Label(footer, text="●  PRIPRAVENÉ", bg=PANEL_ALT, fg=MUTED, font=("Segoe UI", 9, "bold"))
         self.status.pack(side="right", pady=8)
         self.render_accounts()
@@ -270,6 +281,7 @@ class Launcher(tk.Tk):
                          bd=0, cursor="hand2", font=("Segoe UI", 8, "bold"), padx=8, pady=8)
 
     def first_run(self) -> None:
+        self.auto_discover_paths()
         if not self.valid_wow_path():
             messagebox.showinfo(APP_NAME, "Najprv vyber cestu k súboru WoW.exe.", parent=self)
             self.choose_wow_path()
@@ -277,6 +289,38 @@ class Launcher(tk.Tk):
     def valid_wow_path(self) -> bool:
         path = Path(self.config_data.get("wow_path", ""))
         return path.is_file() and path.name.lower() == "wow.exe"
+
+    def auto_discover_paths(self) -> bool:
+        """Find a nearby WoW installation without recursively scanning whole disks."""
+        candidates: list[Path] = []
+        configured_launcher = Path(self.config_data.get("official_launcher_path", ""))
+        if configured_launcher.is_file():
+            candidates.append(configured_launcher.parent / "Wow.exe")
+        app_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+        roots = [app_dir, Path.cwd(), app_dir.parent, Path("C:/Games"), Path("D:/Games"), Path("C:/Program Files"), Path("C:/Program Files (x86)")]
+        candidates.extend(root / "Wow.exe" for root in roots)
+        for root in roots:
+            if not root.is_dir():
+                continue
+            for pattern in ("World of Warcraft*", "WoW*", "GigaFun*", "Nemesis*"):
+                try:
+                    candidates.extend(folder / "Wow.exe" for folder in root.glob(pattern) if folder.is_dir())
+                except OSError:
+                    pass
+        found = next((path for path in candidates if path.is_file()), None)
+        changed = False
+        if found and not self.valid_wow_path():
+            self.config_data["wow_path"] = str(found.resolve())
+            changed = True
+        wow_path = Path(self.config_data.get("wow_path", ""))
+        if wow_path.is_file():
+            nearby = wow_path.parent / "GigaFun_Launcher.exe"
+            if nearby.is_file() and not configured_launcher.is_file():
+                self.config_data["official_launcher_path"] = str(nearby.resolve())
+                changed = True
+        if changed:
+            self.persist()
+        return self.valid_wow_path()
 
     def choose_wow_path(self) -> None:
         selected = filedialog.askopenfilename(
@@ -287,7 +331,70 @@ class Launcher(tk.Tk):
                 messagebox.showwarning(APP_NAME, "Vybraný súbor sa musí volať WoW.exe.", parent=self)
                 return
             self.config_data["wow_path"] = selected
+            nearby = Path(selected).parent / "GigaFun_Launcher.exe"
+            if nearby.is_file():
+                self.config_data["official_launcher_path"] = str(nearby)
             self.persist()
+
+    def choose_official_launcher(self) -> None:
+        selected = filedialog.askopenfilename(
+            title="Vyber GigaFun_Launcher.exe",
+            filetypes=[("GigaFun Launcher", "GigaFun_Launcher.exe"), ("EXE súbory", "*.exe")],
+        )
+        if selected:
+            self.config_data["official_launcher_path"] = selected
+            self.persist()
+
+    def launch_official_updater(self) -> None:
+        configured = Path(self.config_data.get("official_launcher_path", ""))
+        if not configured.is_file():
+            self.auto_discover_paths()
+            configured = Path(self.config_data.get("official_launcher_path", ""))
+        if not configured.is_file():
+            messagebox.showinfo(APP_NAME, "Vyber cestu k oficiálnemu GigaFun launcheru.", parent=self)
+            self.choose_official_launcher()
+            configured = Path(self.config_data.get("official_launcher_path", ""))
+        if configured.is_file():
+            try:
+                subprocess.Popen([str(configured)], cwd=str(configured.parent))
+                self.status.config(text="●  OFICIÁLNY UPDATER SPUSTENÝ", fg=GOLD)
+            except OSError as exc:
+                messagebox.showerror(APP_NAME, f"Updater sa nepodarilo spustiť:\n{exc}", parent=self)
+
+    def ensure_realmlist(self) -> bool:
+        wow_dir = Path(self.config_data["wow_path"]).parent
+        target = wow_dir / "realmlist.wtf"
+        desired = f"set realmlist {REALMLIST}\n"
+        current = ""
+        try:
+            if target.is_file():
+                current = target.read_text(encoding="utf-8", errors="ignore")
+            if REALMLIST.lower() in current.lower():
+                return True
+            if not messagebox.askyesno(
+                APP_NAME,
+                f"Realmlist nie je nastavený na {REALMLIST}.\nChceš ho teraz opraviť?",
+                parent=self,
+            ):
+                return False
+            if target.is_file():
+                backup = target.with_suffix(".wtf.launcher-backup")
+                if not backup.exists():
+                    backup.write_bytes(target.read_bytes())
+            target.write_text(desired, encoding="ascii")
+
+            config_wtf = wow_dir / "WTF" / "Config.wtf"
+            if config_wtf.is_file():
+                text = config_wtf.read_text(encoding="utf-8", errors="ignore")
+                pattern = r'(?im)^\s*SET\s+realmList\s+.*$'
+                replacement = f'SET realmList "{REALMLIST}"'
+                updated, count = re.subn(pattern, replacement, text)
+                if count:
+                    config_wtf.write_text(updated, encoding="utf-8")
+            return True
+        except OSError as exc:
+            messagebox.showerror(APP_NAME, f"Realmlist sa nepodarilo nastaviť:\n{exc}", parent=self)
+            return False
 
     def render_accounts(self) -> None:
         for child in self.accounts_frame.winfo_children():
@@ -347,14 +454,19 @@ class Launcher(tk.Tk):
         ttk.Entry(window, textvariable=path_text, width=52, state="readonly").grid(row=1, column=0, padx=12)
         ttk.Button(window, text="Vybrať…", command=lambda: (self.choose_wow_path(), path_text.set(self.config_data.get("wow_path", "")))).grid(row=1, column=1, padx=(0, 12))
 
-        ttk.Label(window, text="Timeout čakania na okno (sekundy):").grid(row=2, column=0, padx=12, pady=(12, 5), sticky="w")
+        ttk.Label(window, text="Oficiálny GigaFun launcher:").grid(row=2, column=0, padx=12, pady=(12, 5), sticky="w")
+        official_text = tk.StringVar(value=self.config_data.get("official_launcher_path", "Nenastavená"))
+        ttk.Entry(window, textvariable=official_text, width=52, state="readonly").grid(row=3, column=0, padx=12)
+        ttk.Button(window, text="Vybrať…", command=lambda: (self.choose_official_launcher(), official_text.set(self.config_data.get("official_launcher_path", "")))).grid(row=3, column=1, padx=(0, 12))
+
+        ttk.Label(window, text="Timeout čakania na okno (sekundy):").grid(row=4, column=0, padx=12, pady=(12, 5), sticky="w")
         timeout = tk.IntVar(value=int(self.config_data.get("window_timeout", 30)))
-        ttk.Spinbox(window, from_=5, to=120, textvariable=timeout, width=8).grid(row=3, column=0, padx=12, sticky="w")
-        ttk.Label(window, text="Oneskorenie po zobrazení okna (sekundy):").grid(row=4, column=0, padx=12, pady=(12, 5), sticky="w")
+        ttk.Spinbox(window, from_=5, to=120, textvariable=timeout, width=8).grid(row=5, column=0, padx=12, sticky="w")
+        ttk.Label(window, text="Oneskorenie po zobrazení okna (sekundy):").grid(row=6, column=0, padx=12, pady=(12, 5), sticky="w")
         delay = tk.DoubleVar(value=float(self.config_data.get("ready_delay", 3)))
-        ttk.Spinbox(window, from_=0.5, to=20, increment=0.5, textvariable=delay, width=8).grid(row=5, column=0, padx=12, sticky="w")
+        ttk.Spinbox(window, from_=0.5, to=20, increment=0.5, textvariable=delay, width=8).grid(row=7, column=0, padx=12, sticky="w")
         close_after = tk.BooleanVar(value=bool(self.config_data.get("close_after_login", True)))
-        ttk.Checkbutton(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after).grid(row=6, column=0, padx=12, pady=12, sticky="w")
+        ttk.Checkbutton(window, text="Po odoslaní prihlásenia zavrieť launcher", variable=close_after).grid(row=8, column=0, padx=12, pady=12, sticky="w")
 
         def save() -> None:
             try:
@@ -367,7 +479,7 @@ class Launcher(tk.Tk):
             self.persist()
             window.destroy()
 
-        ttk.Button(window, text="Uložiť", command=save).grid(row=7, column=0, columnspan=2, padx=12, pady=(0, 12), sticky="e")
+        ttk.Button(window, text="Uložiť", command=save).grid(row=9, column=0, columnspan=2, padx=12, pady=(0, 12), sticky="e")
 
     def persist(self) -> None:
         try:
@@ -381,6 +493,8 @@ class Launcher(tk.Tk):
         if not self.valid_wow_path():
             messagebox.showwarning(APP_NAME, "Nastav platnú cestu k WoW.exe.", parent=self)
             self.choose_wow_path()
+            return
+        if not self.ensure_realmlist():
             return
         try:
             password = unprotect_secret(account["password"])

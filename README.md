@@ -1,8 +1,19 @@
-# WoW Nemesis Launcher
+# WoW Nemesis Launcher v1.1.0
 
 Jednoduchý lokálny launcher pre World of Warcraft 2.4.3. Po kliknutí na uložený účet spustí `WoW.exe`, počká na jeho okno a cez klávesnicu odošle prihlasovacie údaje.
 
 Rozhranie používa vlastné tmavé fantasy pozadie a zlato-antracitovú vizuálnu tému inšpirovanú webom Project Nemesis.
+
+Autor: **Juraj Pekarík**
+
+## Companion funkcie
+
+- automatické nájdenie blízkej inštalácie `Wow.exe`,
+- kontrola a bezpečná oprava `realmlist.wtf` pre GigaFun,
+- samostatné spustenie oficiálneho `GigaFun_Launcher.exe` na aktualizáciu alebo opravu hry,
+- následné spustenie WoW a prihlásenie vybraného účtu.
+
+Oficiálny launcher nie je súčasťou projektu ani výsledného EXE.
 
 ## Bezpečnosť
 
@@ -27,8 +38,10 @@ Pri prvom spustení vyber `WoW.exe`, pridaj účet a klikni na jeho veľké tla�
 Spusti `build.bat`. Výsledok bude:
 
 ```text
-dist\WoW_Nemesis_Launcher.exe
+dist\WoW_Nemesis_Launcher_v1.1.0.exe
 ```
+
+Verzie používajú formát `major.minor.patch`. Oprava bude napríklad `v1.1.1`, nová funkcia `v1.2.0`.
 
 ## Ladenie prihlasovania
 
