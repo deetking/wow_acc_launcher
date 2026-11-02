@@ -1,0 +1,87 @@
+444 INFO: PyInstaller: 6.15.0, contrib hooks: 2026.8
+444 INFO: Python: 3.12.14
+783 INFO: Platform: Windows-11-10.0.26300-SP0
+783 INFO: Python environment: C:\Users\juraj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python
+932 INFO: Module search paths (PYTHONPATH):
+['D:\\wow_acc_launcher',
+ 'D:\\wow_acc_launcher\\.build-deps',
+ 'D:\\wow_acc_launcher\\vendor',
+ 'C:\\Users\\juraj\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python312.zip',
+ 'C:\\Users\\juraj\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\DLLs',
+ 'C:\\Users\\juraj\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\Lib',
+ 'C:\\Users\\juraj\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python',
+ 'C:\\Users\\juraj\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\Lib\\site-packages',
+ 'D:\\wow_acc_launcher',
+ 'D:\\wow_acc_launcher\\vendor']
+1925 INFO: Appending 'datas' from .spec
+1928 INFO: checking Analysis
+1950 INFO: Building because excludes changed
+1950 INFO: Running Analysis Analysis-00.toc
+1950 INFO: Target bytecode optimization level: 0
+1950 INFO: Initializing module dependency graph...
+1952 INFO: Initializing module graph hook caches...
+1970 INFO: Analyzing modules for base_library.zip ...
+4768 INFO: Processing standard module hook 'hook-encodings.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+6670 INFO: Processing standard module hook 'hook-pickle.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+7657 INFO: Processing standard module hook 'hook-heapq.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+7997 INFO: Caching module dependency graph...
+8034 INFO: Looking for Python shared library...
+8046 INFO: Using Python shared library: C:\Users\juraj\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python312.dll
+8046 INFO: Analyzing D:\wow_acc_launcher\main.py
+8177 INFO: Processing standard module hook 'hook-_ctypes.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+8209 INFO: Processing pre-find-module-path hook 'hook-tkinter.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks\\pre_find_module_path'
+8211 INFO: TclTkInfo: initializing cached Tcl/Tk info...
+8546 INFO: Processing standard module hook 'hook-_tkinter.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+8616 INFO: Processing standard module hook 'hook-platform.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+8633 INFO: Processing standard module hook 'hook-customtkinter.py' from 'D:\\wow_acc_launcher\\.build-deps\\_pyinstaller_hooks_contrib\\stdhooks'
+8795 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks\\pre_safe_import_module'
+8799 INFO: SetuptoolsInfo: initializing cached setuptools info...
+10144 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks\\pre_safe_import_module'
+10854 INFO: Processing standard module hook 'hook-PIL.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+10941 INFO: Processing standard module hook 'hook-PIL.Image.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+11867 INFO: Processing standard module hook 'hook-xml.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+11898 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+12036 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+12572 INFO: Processing standard module hook 'hook-difflib.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+12792 INFO: Processing standard module hook 'hook-sysconfig.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+D:\wow_acc_launcher\.build-deps\pyautogui\_pyautogui_x11.py:284: SyntaxWarning: invalid escape sequence '\e'
+  '\e': _display.keysym_to_keycode(Xlib.XK.string_to_keysym('Escape')),
+12961 INFO: Processing module hooks (post-graph stage)...
+13186 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+13262 INFO: Processing standard module hook 'hook-_tkinter.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks'
+13277 INFO: Performing binary vs. data reclassification (932 entries)
+13470 INFO: Looking for ctypes DLLs
+13509 WARNING: Ignoring AppKit.framework/AppKit imported from D:\wow_acc_launcher\vendor\darkdetect\_mac_detect.py - only basenames are supported with ctypes imports!
+13532 INFO: Analyzing run-time hooks ...
+13534 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks\\rthooks'
+13538 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks\\rthooks'
+13541 INFO: Including run-time hook 'pyi_rth__tkinter.py' from 'D:\\wow_acc_launcher\\.build-deps\\PyInstaller\\hooks\\rthooks'
+13585 INFO: Creating base_library.zip...
+13669 INFO: Looking for dynamic libraries
+customtkinter.windows.widgets.font warning: Preferred drawing method 'font_shapes' can not be used because the font file could not be loaded.
+Using 'circle_shapes' instead. The rendering quality will be bad!
+14539 INFO: Extra DLL search directories (AddDllDirectory): []
+14539 INFO: Extra DLL search directories (PATH): []
+15273 INFO: Warnings written to D:\wow_acc_launcher\build\WoW_Nemesis_Launcher_v1.10.0_AUTOCAST\warn-WoW_Nemesis_Launcher_v1.10.0_AUTOCAST.txt
+15300 INFO: Graph cross-reference written to D:\wow_acc_launcher\build\WoW_Nemesis_Launcher_v1.10.0_AUTOCAST\xref-WoW_Nemesis_Launcher_v1.10.0_AUTOCAST.html
+15336 INFO: checking PYZ
+15402 INFO: checking PKG
+15404 INFO: Building because D:\wow_acc_launcher\main.py changed
+15404 INFO: Building PKG (CArchive) WoW_Nemesis_Launcher_v1.10.0_AUTOCAST.pkg
+15473 INFO: Building PKG (CArchive) WoW_Nemesis_Launcher_v1.10.0_AUTOCAST.pkg completed successfully.
+15474 INFO: Bootloader D:\wow_acc_launcher\.build-deps\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+15474 INFO: checking EXE
+15486 INFO: Rebuilding EXE-00.toc because pkg is more recent
+15486 INFO: Building EXE from EXE-00.toc
+15487 INFO: Copying bootloader EXE to D:\wow_acc_launcher\build\WoW_Nemesis_Launcher_v1.10.0_AUTOCAST\WoW_Nemesis_Launcher_v1.10.0_AUTOCAST.exe
+15527 INFO: Copying icon to EXE
+15562 INFO: Copying version information to EXE
+15597 INFO: Copying 0 resources to EXE
+15598 INFO: Embedding manifest in EXE
+15633 INFO: Appending PKG archive to EXE
+15678 INFO: Fixing EXE headers
+15866 INFO: Building EXE from EXE-00.toc completed successfully.
+15875 INFO: checking COLLECT
+15891 INFO: Building COLLECT COLLECT-00.toc
+17733 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+17749 INFO: Build complete! The results are available in: D:\wow_acc_launcher\dist\hotkey_custom

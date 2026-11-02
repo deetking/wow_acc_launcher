@@ -1,0 +1,31 @@
+# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 12, 0, 0),
+    prodvers=(1, 12, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040904B0',
+        [
+          StringStruct('CompanyName', 'Bc. Juraj Pekarík'),
+          StringStruct('FileDescription', 'WoW Nemesis account launcher'),
+          StringStruct('FileVersion', '1.12.0.0'),
+          StringStruct('InternalName', 'WoW_Nemesis_Launcher'),
+          StringStruct('LegalCopyright', 'Copyright (c) Bc. Juraj Pekarík'),
+          StringStruct('OriginalFilename', 'WoW_Nemesis_Launcher_v1.12.exe'),
+          StringStruct('ProductName', 'WoW Nemesis Launcher'),
+          StringStruct('ProductVersion', '1.12.0.0')
+        ]
+      )
+    ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)

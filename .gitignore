@@ -5,6 +5,12 @@ build/
 dist/
 *.spec
 GigaFun_Launcher.exe
+GigaFun_Launcher*.exe
+cdm.exe
 vendor/**/__pycache__/
 vendor/**/*.pyc
 WOB2025/
+
+.build-deps/
+build_autocast.log
+build_design.log
