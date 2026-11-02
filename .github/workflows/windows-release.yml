@@ -1,0 +1,66 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-build.txt
+      - run: python -m pip install -r requirements-build.txt
+      - name: Verify release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $version = python -c "from tools.build_release import version; print(version())"
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match APP_VERSION' }
+      - run: python -m unittest test_autocast test_release
+      - run: python tools/build_release.py
+      - name: Verify packaged launcher
+        shell: pwsh
+        run: |
+          $version = python -c "from tools.build_release import version; print(version())"
+          python tools/smoke_test.py "dist/WoW_Nemesis_Launcher_v$version/WoW_Nemesis_Launcher_v$version.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-release
+          path: |
+            dist/*_release.zip
+            dist/*_release.zip.sha256
+          if-no-files-found: error
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Windows-release
+          path: release-files
+      - name: Prepare draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG" release-files/* --draft --verify-tag
+          --title "WoW Nemesis Launcher $RELEASE_TAG" --notes-file RELEASE_NOTES.md

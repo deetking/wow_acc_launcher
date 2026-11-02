@@ -9,18 +9,22 @@ import sys
 import time
 
 workspace = Path(__file__).resolve().parent.parent
-smoke = workspace / "design_preview/runtime_smoke"
-smoke.mkdir(exist_ok=True)
+smoke = workspace / ".local/runtime_smoke"
+smoke.mkdir(parents=True, exist_ok=True)
 fake = smoke / "Wow.exe"
 fake.write_bytes(b"")
 folder = smoke / "WoWNemesisLauncher"
 folder.mkdir(exist_ok=True)
 (folder / "config.json").write_text(json.dumps({"wow_path": str(fake), "accounts": [],
                                                "multibox_defaults_applied": True}), encoding="utf-8")
-exe = workspace / "dist/clean/WoW_Nemesis_Launcher_v1.10.0_CLEAN/WoW_Nemesis_Launcher_v1.10.0_CLEAN.exe"
+from build_release import version
+release_name = f"WoW_Nemesis_Launcher_v{version()}"
+exe = workspace / "dist" / release_name / f"{release_name}.exe"
 if len(sys.argv) > 1:
     exe = Path(sys.argv[1]).resolve()
 env = os.environ.copy()
+for variable in ("PYTHONPATH", "PYTHONHOME", "TCL_LIBRARY", "TK_LIBRARY"):
+    env.pop(variable, None)
 env["APPDATA"] = str(smoke)
 process = subprocess.Popen([str(exe)], env=env, cwd=exe.parent)
 try:
@@ -48,13 +52,13 @@ try:
             value = ctypes.create_unicode_buffer(512)
             user32.GetWindowTextW(hwnd, value, len(value))
             titles.append(value.value)
-            if "Unhandled" in value.value:
+            if "Unhandled" in value.value or value.value == "Error":
                 user32.EnumChildWindows(hwnd, child_callback, 0)
         return True
 
     user32.EnumWindows(callback_type(visit), 0)
     assert not errors, errors
-    assert any("WoW Nemesis Launcher v" in value for value in titles), titles
+    assert any(f"WoW Nemesis Launcher v{version()}" in value for value in titles), titles
     print("Packaged EXE startup OK; real account config untouched")
 finally:
     process.terminate()

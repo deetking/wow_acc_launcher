@@ -3,20 +3,20 @@ setlocal
 cd /d "%~dp0"
 
 set EXE_PATH=%~1
-if "%EXE_PATH%"=="" set EXE_PATH=dist\WoW_Nemesis_Launcher_v1.8.1.exe
+if "%EXE_PATH%"=="" set EXE_PATH=dist\WoW_Nemesis_Launcher_v1.12\WoW_Nemesis_Launcher_v1.12.exe
 
 for %%F in ("%EXE_PATH%") do (
   set EXE_DIR=%%~dpF
   set EXE_NAME=%%~nF
 )
-set RELEASE_ZIP=%EXE_DIR%%EXE_NAME%_signed.zip
+set RELEASE_ZIP=%EXE_DIR%..\%EXE_NAME%_signed.zip
 
 if not exist "%EXE_PATH%" (
   echo EXE neexistuje:
   echo %EXE_PATH%
   echo.
   echo Pouzitie:
-  echo sign_release.bat dist\WoW_Nemesis_Launcher_v1.8.1.exe
+  echo sign_release.bat dist\WoW_Nemesis_Launcher_v1.12\WoW_Nemesis_Launcher_v1.12.exe
   exit /b 1
 )
 
@@ -50,8 +50,7 @@ if errorlevel 1 exit /b 1
 signtool verify /pa /v "%EXE_PATH%"
 if errorlevel 1 exit /b 1
 
-if exist "%RELEASE_ZIP%" del "%RELEASE_ZIP%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path '%EXE_PATH%' -DestinationPath '%RELEASE_ZIP%' -Force"
+python -c "from pathlib import Path; from tools.build_release import package; import sys; p=Path(sys.argv[1]).resolve(); package(p.parent, p.parent.parent / (p.stem + '_signed.zip'))" "%EXE_PATH%"
 if errorlevel 1 exit /b 1
 
 echo.

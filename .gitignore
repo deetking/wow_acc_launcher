@@ -12,5 +12,17 @@ vendor/**/*.pyc
 WOB2025/
 
 .build-deps/
-build_autocast.log
-build_design.log
+*.log
+.local/
+design_preview/
+config.json
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
+*.zip
+.pytest_cache/
+.idea/
+.vscode/
