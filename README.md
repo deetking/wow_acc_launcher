@@ -60,14 +60,4 @@ Kontrola spustenia s izolovanou testovacou konfiguráciou:
 python tools/smoke_test.py
 ```
 
-### Vydanie na GitHube
-
-Do Gitu pridaj zdrojové súbory, nie `dist/`, build logy, `.local/`, osobné konfigurácie ani externé EXE. Staré pracovné náhľady a logy sa uchovávajú lokálne v ignorovanom `.local/`.
-
-Hotový ZIP a jeho `.sha256` nahraj do **GitHub Releases**. Pri publikovaní použi text v `RELEASE_NOTES.md`. Používateľom posielaj odkaz na vydanie, nie na zdrojový kód.
-
-Workflow **Windows release** možno spustiť ručne cez **Actions**; výsledkom je artefakt so ZIP-om a kontrolným súčtom. Pri pushnutí tagu zhodného s verziou, napríklad `v1.12`, workflow navyše vytvorí **draft release** s oboma prílohami. Skontroluj ho a publikuj cez GitHub. Workflow zatiaľ treba overiť prvým spustením na GitHube.
-
-Voliteľný podpis: nastav vlastný `SIGN_CERT_PFX` a `SIGN_CERT_PASSWORD`, potom spusti `sign_release.bat`. Skript podpíše EXE a vytvorí nový ZIP s celým runtime. Certifikát ani heslo nepatria do Gitu.
-
 Autor: **Bc. Juraj Pekarík**
